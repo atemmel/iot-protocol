@@ -1,4 +1,4 @@
-#include "unix_tcp_socket.hpp"
+#include "unix_udp_socket.hpp"
 
 #include "unix_dns_lookup.hpp"
 
@@ -7,9 +7,9 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-auto UnixTcpSocket::create() -> std::tuple<UnixTcpSocket, Error> {
-	UnixTcpSocket tcpSocket;
-	tcpSocket.fd = socket(AF_INET, SOCK_STREAM, 0);
+auto UnixUdpSocket::create() -> std::tuple<UnixUdpSocket, Error> {
+	UnixUdpSocket tcpSocket;
+	tcpSocket.fd = socket(AF_INET, SOCK_DGRAM, 0);
 	if(tcpSocket.fd < 0) {
 		return {
 			tcpSocket,
@@ -23,7 +23,7 @@ auto UnixTcpSocket::create() -> std::tuple<UnixTcpSocket, Error> {
 	};
 }
 
-auto UnixTcpSocket::connect(std::string_view address, uint16_t port) -> Error {
+auto UnixUdpSocket::connect(std::string_view address, uint16_t port) -> Error {
 	sockaddr_in hint;
 	hint.sin_family = AF_INET;
 	hint.sin_port = htons(port);
@@ -46,7 +46,7 @@ auto UnixTcpSocket::connect(std::string_view address, uint16_t port) -> Error {
 	return "Could not connect to address/port combination";
 }
 
-auto UnixTcpSocket::read(size_t howManyBytes) -> std::tuple<Bytes, Error> {
+auto UnixUdpSocket::read(size_t howManyBytes) -> std::tuple<Bytes, Error> {
 	Bytes bytes(howManyBytes);
 	auto result = ::read(fd, bytes.data(), bytes.size());
 	if(result < 0) {
@@ -61,7 +61,7 @@ auto UnixTcpSocket::read(size_t howManyBytes) -> std::tuple<Bytes, Error> {
 	};
 }
 
-auto UnixTcpSocket::readUntil(Byte thisByte) -> std::tuple<Bytes, Error> {
+auto UnixUdpSocket::readUntil(Byte thisByte) -> std::tuple<Bytes, Error> {
 	Bytes bytes;
 	bytes.reserve(64);
 
@@ -86,7 +86,7 @@ auto UnixTcpSocket::readUntil(Byte thisByte) -> std::tuple<Bytes, Error> {
 	}
 }
 
-auto UnixTcpSocket::write(const BytesView bytes) -> std::tuple<size_t, Error> {
+auto UnixUdpSocket::write(const BytesView bytes) -> std::tuple<size_t, Error> {
 	auto result = ::write(fd, bytes.data(), bytes.size());
 	if(result < 0) {
 		return {

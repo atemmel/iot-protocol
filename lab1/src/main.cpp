@@ -1,7 +1,13 @@
 #include <iostream>
 #include "unix_tcp_socket.hpp"
+#include "unix_udp_socket.hpp"
+
+struct CoapHeader {
+	std::array<Byte, 4> data;
+};
 
 auto main() -> int {
+	/*
 	auto [socket, err] = UnixTcpSocket::create();
 	validate(err);
 
@@ -20,10 +26,21 @@ auto main() -> int {
 	auto [bytes, readError] = socket.read(1024);
 	validate(writeError);
 	std::cout << bytes.data() << '\n';
-
-	/*
-	auto [bytes, readError] = socket.readUntil('\n');
-	validate(readError);
-	std::cout << bytes.data() << '\n';
 	*/
+
+	auto [socket, err] = UnixUdpSocket::create();
+	validate(err);
+	err = socket.connect("coap.me", 5683);
+	validate(err);
+
+	CoapHeader header;
+	auto asBytes = BytesView(header.data);
+	std::cout << "Writing data...\n";
+	auto [len, writeError] = socket.write(asBytes);
+	validate(writeError);
+	std::cout << len << " bytes written\n";
+
+	auto [bytes, readError] = socket.read(1024);
+	validate(writeError);
+	std::cout << bytes.data() << '\n';
 }

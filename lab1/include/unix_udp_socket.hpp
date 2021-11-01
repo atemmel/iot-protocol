@@ -1,13 +1,12 @@
 #pragma once
 #include <tuple>
-#include <vector>
 
 #include "common.hpp"
 #include "error.hpp"
 
-class UnixTcpSocket {
+class UnixUdpSocket {
 public:
-	static auto create() -> std::tuple<UnixTcpSocket, Error>;
+	static auto create() -> std::tuple<UnixUdpSocket, Error>;
 
 	auto connect(std::string_view address, uint16_t port) -> Error;
 	auto read(size_t howManyBytes) -> std::tuple<Bytes, Error>;
