@@ -39,7 +39,7 @@ auto UnixTcpSocket::connect(std::string_view address, uint16_t port) -> Error {
 		int result = ::connect(fd, hintAsParam, sizeof hint);
 		if(result >= 0) {
 			return nullptr;
-		}
+		}	
 	}
 
 	return "Could not connect to address/port combination";

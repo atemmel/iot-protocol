@@ -36,7 +36,7 @@ auto operator<<(std::ostream& os, const Error err) -> std::ostream& {
 auto Error::check(Error err, const char* file, int line) -> void {
 	if(err) {
 		std::cerr 
-			<< "\033[31;40mUnrecoverable error: \033[37;40m (" 
+			<< "\033[31;40mUnrecoverable error:\033[37;40m (" 
 			<< findLastSlash(file) << ", line " << line << ")\n"
 			<< err << '\n';
 		std::exit(EXIT_FAILURE);
