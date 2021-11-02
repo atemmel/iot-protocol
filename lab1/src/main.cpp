@@ -2,8 +2,28 @@
 #include "unix_tcp_socket.hpp"
 #include "unix_udp_socket.hpp"
 
+template<typename T>
+struct IntoBytes {
+	IntoBytes(const T& underlying) : underlying(underlying) {}
+	
+	const Byte* begin() const {
+		return reinterpret_cast<const Byte*>(this);
+	}
+
+	const Byte* end() const {
+		return reinterpret_cast<const Byte*>(this + sizeof(underlying));
+	}
+
+private:
+	const T& underlying;
+};
+
 struct CoapHeader {
-	std::array<Byte, 4> data;
+	unsigned int ver : 2,
+		 type : 2,
+		 tokenLength : 4,
+		 code : 8,
+		 msgId : 16;
 };
 
 auto main() -> int {
@@ -33,10 +53,17 @@ auto main() -> int {
 	err = socket.connect("coap.me", 5683);
 	validate(err);
 
+	/*
 	CoapHeader header;
-	auto asBytes = BytesView(header.data);
+	header.ver = 0;
+	header.tokenLength = 0;
+	header.type = 0;
+	header.msgId = 0;
+	header.code = 0;
+
+	std::cout << "Header size: " << sizeof header << '\n';
 	std::cout << "Writing data...\n";
-	auto [len, writeError] = socket.write(asBytes);
+	auto [len, writeError] = socket.write(IntoBytes(header));
 	validate(writeError);
 	std::cout << len << " bytes written\n";
 
