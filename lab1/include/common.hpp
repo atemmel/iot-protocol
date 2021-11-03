@@ -17,12 +17,8 @@ public:
 
 	template<typename Container>
 	View(const Container& container) : 
-		first(reinterpret_cast<const T*>(&*container.begin())), 
-		last(reinterpret_cast<const T*>(&*container.end())) {}
-
-	auto operator[](size_t index) const -> const T& {
-		return first[index];
-	}
+		first(reinterpret_cast<const unsigned char*>(&*container.begin())), 
+		last(reinterpret_cast<const unsigned char*>(&*container.end())) {}
 
 	auto size() const -> size_t {
 		return std::distance(first, last);
@@ -38,6 +34,10 @@ public:
 
 	auto data() const -> const T* {
 		return first;
+	}
+
+	auto operator[](size_t index) const -> const T& {
+		return first[index];
 	}
 
 private:
