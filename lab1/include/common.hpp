@@ -12,10 +12,10 @@ template<typename T>
 class View {
 public:
 	template<typename U>
-	View(const U a, const U b) : first(&*a), last(&*b) {}
+	View(const U* a, size_t length) : first(a), last(a + length) {}
 
 	template<typename U>
-	View(const U* a, size_t length) : first(a), last(a + length) {}
+	View(const U a, const U b) : first(&*a), last(&*b) {}
 
 	template<typename Container>
 	View(const Container& container) : 
@@ -122,17 +122,20 @@ private:
 	const T& underlying;
 };
 
-
 template<typename T>
 auto fromBytes(BytesView bytes) -> std::tuple<T, Error> {
 	T value;
 	Byte* valueBegin = reinterpret_cast<Byte*>(&value);
-	Byte* valueEnd = reinterpret_cast<Byte*>(&value) + sizeof(T);
 
 	if(sizeof(T) != bytes.size()) {
 		return {
 			T(),
 			"Size mismatch between byte view and conversion type",
+		};
+	} else if(bytes.data() == nullptr) {
+		return {
+			T(),
+			"Byte view points to null",
 		};
 	}
 

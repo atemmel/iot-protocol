@@ -1,11 +1,11 @@
 #pragma once
 #include <cstdint>
+#include <string>
 
 #include "common.hpp"
 
 class Coap {
 public:
-
 	enum Type : uint32_t {
 		Confirmable = 0,
 		NonConfirmable = 1,
@@ -47,7 +47,57 @@ public:
 		ProxyingNotSupported = 165,
 	};
 
-	struct Header {
+	enum OptionType : uint32_t {
+		IfMatch = 1,
+		UriHost = 3,
+		ETag = 4,
+		IfNoneMatch = 5,
+		UriPort = 7,
+		LocationPath = 8,
+		UriPath = 11,
+		ContentFormat = 12,
+		MaxAge = 14,
+		UriQuery = 15,
+		Accept = 17,
+		LocationQuery = 20,
+		Size2 = 28,
+		ProxyUri = 35,
+		ProxyScheme = 39,
+		Size1 = 60,
+	};
+
+	enum ContentFormats : uint32_t {
+		Text = 0,
+		LinkFormat = 40,
+		Xml = 41,
+		OctetStream = 42,
+		Exi = 47,
+		Json = 50,
+		Cbor = 60,
+	};
+
+	struct Option {
+		uint32_t integer;
+		std::string string;
+		OptionType type;
+
+		auto isInteger() const -> bool;
+		auto isString() const -> bool;
+	};
+
+	struct Message {
+		Type type;
+		Code code;
+		uint32_t id;
+		Bytes tokens;
+		std::vector<Option> options;
+		Bytes payload;
+	};
+
+	auto encode(const Message& message) -> Bytes;
+	auto decode(BytesView bytes) -> std::tuple<Message, Error>;
+
+	struct HeaderRepresentation {
 	private:
 		constexpr static uint32_t versionMask = 0b11000000000000000000000000000000;
 		constexpr static uint32_t versionShift = 30u;
@@ -66,44 +116,30 @@ public:
 	public:
 		uint32_t data = 0;
 
-		auto setVersion(uint32_t version) {
-			setIntSegment(data, version, versionMask, versionShift);
-		}
+		static auto fromMessage(const Message& message) -> HeaderRepresentation;
 
-		auto setType(uint32_t type) {
-			setIntSegment(data, type, typeMask, typeShift);
-		}
+		auto setVersion(uint32_t version) -> void;
 
-		auto setTokenLength(uint32_t length) {
-			setIntSegment(data, length, tokenLengthMask, tokenLengthShift);
-		}
+		auto setType(uint32_t type) -> void;
 
-		auto setCode(uint32_t code) {
-			setIntSegment(data, code, codeMask, codeShift);
-		}
+		auto setTokenLength(uint32_t length) -> void;
 
-		auto setMessageId(uint32_t id) {
-			setIntSegment(data, id, messageIdMask, messageIdShift);
-		}
+		auto setCode(uint32_t code) -> void;
 
-		auto getVersion() const -> uint32_t {
-			return getIntSegment(data, versionMask, versionShift);
-		}
-		auto getType() const -> uint32_t {
-			return getIntSegment(data, typeMask, typeShift);
-		}
-		auto getTokenLength() const -> uint32_t {
-			return getIntSegment(data, tokenLengthMask, tokenLengthShift);
-		}
-		auto getCode() const -> uint32_t {
-			return getIntSegment(data, codeMask, codeShift);
-		}
-		auto getMessageId() const -> uint32_t {
-			return getIntSegment(data, messageIdMask, messageIdShift);
-		}
+		auto setMessageId(uint32_t id) -> void;
+
+		auto getVersion() const -> uint32_t;
+
+		auto getType() const -> uint32_t;
+
+		auto getTokenLength() const -> uint32_t;
+
+		auto getCode() const -> uint32_t;
+
+		auto getMessageId() const -> uint32_t;
 	};
 
-	struct Token {
+	struct OptionRepresentation {
 	private:
 		constexpr static uint8_t typeMask = 0xF0;
 		constexpr static uint8_t typeShift = 4;
@@ -114,20 +150,14 @@ public:
 	public:
 		uint8_t data = 0;
 
-		auto setType(uint8_t type) {
-			setIntSegment(data, type, typeMask, typeShift);
-		}
+		static auto fromOption(const Option& option) -> OptionRepresentation;
 
-		auto setLength(uint8_t length) {
-			setIntSegment(data, length, lengthMask, lengthShift);
-		}
+		auto setType(uint8_t type) -> void;
 
-		auto getType()  const-> uint8_t {
-			return getIntSegment(data, typeMask, typeShift);
-		}
+		auto setLength(uint8_t length) -> void;
 
-		auto getLength() const -> uint8_t {
-			return getIntSegment(data, lengthMask, lengthShift);
-		}
+		auto getType()  const-> uint8_t;
+
+		auto getLength() const -> uint8_t;
 	};
 };
