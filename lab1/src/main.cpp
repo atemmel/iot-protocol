@@ -12,61 +12,45 @@ auto main() -> int {
 	err = socket.connect("127.0.0.1", 5683);
 	validate(err);
 
-	Coap::HeaderRepresentation header;
-	header.setVersion(1);
-	header.setType(Coap::Type::Confirmable);
-	header.setCode(Coap::Code::Get);
-	header.setTokenLength(0);	// AMOUNT of tokens, not amount of bytes that belong to tokens
-	header.setMessageId(1234);
+	Coap::Message message = {
+		.type = Coap::Type::Confirmable,
+		.code = Coap::Code::Get,
+		.id = 1234,
+		.tokens = {},
+		.options = {
+			{
+				.string = "basic",
+				.type = Coap::OptionType::UriPath,
+			}
+		},
+		.payload = {},
+	};
 
-	//std::string_view uri = "test";
-	std::string_view uri = "basic";
-	Coap::OptionRepresentation option;
-	option.setType(Coap::OptionType::UriPath); // URI
-	option.setLength(uri.length());
+	auto bytes = Coap::encode(message);
+	uint32_t len;
+	std::tie(len, err) = socket.write(bytes);
+	validate(err);
 
-	auto headerAsBytes = AsBytes(header);
-	auto optionAsBytes = AsBytes(option);
-	auto uriAsBytes = BytesView(uri);
+	std::tie(bytes, err) = socket.read(1024);
+	validate(err);
 
-	Bytes message;
-	message.reserve(headerAsBytes.size() + optionAsBytes.size() + uriAsBytes.size());
-	message.insert(message.end(), headerAsBytes.begin(), headerAsBytes.end());
-	message.insert(message.end(), optionAsBytes.begin(), optionAsBytes.end());
-	message.insert(message.end(), uriAsBytes.begin(), uriAsBytes.end());
-	auto [len, writeError] = socket.write(message);
-	validate(writeError);
-
-	Coap::HeaderRepresentation readHeader;
-	auto [bytes, readError] = socket.read(1024);
-	validate(writeError);
-
-	auto headerBytes = BytesView(bytes.begin(), bytes.begin() + sizeof(Coap::HeaderRepresentation));
-	auto [responseHeader, headerError] = fromBytes<Coap::HeaderRepresentation>(headerBytes);
-	validate(headerError);
-
-	auto optionBytes = BytesView(bytes.begin() + sizeof(Coap::HeaderRepresentation),
-			bytes.begin() + sizeof(Coap::HeaderRepresentation) + sizeof(Coap::OptionRepresentation));
-	auto [responseOption, optionError] = fromBytes<Coap::OptionRepresentation>(optionBytes);
-	validate(optionError);
-
-	std::cout << std::dec << '\n'
-		<< "Version: " << responseHeader.getVersion() << '\n'
-		<< "Code: " << responseHeader.getCode() << '\n'
-		<< "Type: " << responseHeader.getType()  << '\n'
-		<< "Length: " << responseHeader.getTokenLength()  << '\n'
-		<< "Message id: " << responseHeader.getMessageId() << '\n'
-		<< '\n';
+	auto [response, decodeError] = Coap::decode(bytes);
+	validate(decodeError);
 
 	std::cout 
-		<< "Type: " << static_cast<int>(responseOption.getType()) << '\n'
-		<< "Length: " << static_cast<int>(responseOption.getLength()) << '\n';
+		<< "Type: " << response.type << '\n'
+		<< "Code: " << response.code << '\n'
+		<< "Id: " << response.id << "\nOptions:\n";
 
-	if(responseOption.getType() == Coap::OptionType::UriQuery) {
-		auto remainingBytes = BytesView(bytes.begin() + sizeof(Coap::HeaderRepresentation) + sizeof(Coap::OptionRepresentation),
-			bytes.begin() + sizeof(Coap::HeaderRepresentation) + sizeof(Coap::OptionRepresentation) + responseOption.getLength());
-
-		std::string view(remainingBytes.begin(), remainingBytes.end());
-		std::cout << view << '\n';
+	for(const auto& opt : response.options) {
+		std::cout << '\t' << opt.type << ' ';
+		if(opt.isInteger()) {
+			std::cout << opt.integer;
+		} else if(opt.isString()) {
+			std::cout << opt.string;
+		}
+		std::cout << '\n';
 	}
+
+	std::cout << "Payload size: " << response.payload.size() << '\n';
 }

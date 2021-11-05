@@ -1,4 +1,5 @@
 #include "coap.hpp"
+#include <iostream>
 
 auto Coap::Option::isInteger() const -> bool {
 	switch(type) {
@@ -55,9 +56,23 @@ auto Coap::encode(const Message& message) -> Bytes {
 	bytes.insert(bytes.end(), message.tokens.begin(), message.tokens.end());
 
 	// Options
-	for(auto option : options) {
+	for(size_t i = 0; i < message.options.size(); i++) {
+		auto option = options[i];
 		auto optionAsBytes = AsBytes(option);
 		bytes.insert(bytes.end(), optionAsBytes.begin(), optionAsBytes.end());
+
+		if(message.options[i].isInteger()) {
+			auto unsignedAsBytes = AsBytes(message.options[i].integer);
+			bytes.insert(bytes.end(), unsignedAsBytes.begin(), unsignedAsBytes.end());
+		} else if(message.options[i].isString()) {
+			bytes.insert(bytes.end(), message.options[i].string.begin(),
+				message.options[i].string.end());
+		}
+	}
+
+	// Optional early exit
+	if(message.payload.empty()) {
+		return bytes;
 	}
 
 	// Full byte

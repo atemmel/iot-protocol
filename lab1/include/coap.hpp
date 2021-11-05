@@ -94,9 +94,10 @@ public:
 		Bytes payload;
 	};
 
-	auto encode(const Message& message) -> Bytes;
-	auto decode(BytesView bytes) -> std::tuple<Message, Error>;
+	static auto encode(const Message& message) -> Bytes;
+	static auto decode(BytesView bytes) -> std::tuple<Message, Error>;
 
+private:
 	struct HeaderRepresentation {
 	private:
 		constexpr static uint32_t versionMask = 0b11000000000000000000000000000000;
