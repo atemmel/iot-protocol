@@ -55,6 +55,9 @@ auto UnixUdpSocket::read(size_t howManyBytes) -> std::tuple<Bytes, Error> {
 			"Reading from socket failed",
 		};
 	}
+	if(result < howManyBytes) {
+		bytes.erase(bytes.begin() + result, bytes.end());
+	}
 	return {
 		bytes,
 		nullptr,
