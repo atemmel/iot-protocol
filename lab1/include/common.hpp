@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <vector>
 
+#include <iostream>
+
 #include "error.hpp"
 
 using Byte = unsigned char;

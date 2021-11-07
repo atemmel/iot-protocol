@@ -77,11 +77,13 @@ public:
 	};
 
 	struct Option {
-		uint32_t integer;
+		uint32_t uint16;
+		uint32_t uint32;
 		std::string string;
 		OptionType type;
 
-		auto isInteger() const -> bool;
+		auto isUint16() const -> bool;
+		auto isUint32() const -> bool;
 		auto isString() const -> bool;
 	};
 

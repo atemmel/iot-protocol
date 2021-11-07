@@ -1,12 +1,21 @@
 #include "coap.hpp"
 #include <iostream>
+#include <bitset>
 
-auto Coap::Option::isInteger() const -> bool {
+auto Coap::Option::isUint16() const -> bool {
 	switch(type) {
 		case Coap::OptionType::UriPort:
 		case Coap::OptionType::ContentFormat:
-		case Coap::OptionType::MaxAge:
 		case Coap::OptionType::Accept:
+			return true;
+		default:
+			return false;
+	}
+}
+
+auto Coap::Option::isUint32() const -> bool {
+	switch(type) {
+		case Coap::OptionType::MaxAge:
 		case Coap::OptionType::Size2:
 		case Coap::OptionType::Size1:
 			return true;
@@ -196,8 +205,11 @@ auto Coap::encode(const Message& message) -> Bytes {
 		auto optionAsBytes = AsBytes(option);
 		bytes.insert(bytes.end(), optionAsBytes.begin(), optionAsBytes.end());
 
-		if(message.options[i].isInteger()) {
-			auto unsignedAsBytes = AsBytes(message.options[i].integer);
+		if(message.options[i].isUint32()) {
+			auto unsignedAsBytes = AsBytes(message.options[i].uint32);
+			bytes.insert(bytes.end(), unsignedAsBytes.begin(), unsignedAsBytes.end());
+		} else if(message.options[i].isUint16()) {
+			auto unsignedAsBytes = AsBytes(message.options[i].uint16);
 			bytes.insert(bytes.end(), unsignedAsBytes.begin(), unsignedAsBytes.end());
 		} else if(message.options[i].isString()) {
 			bytes.insert(bytes.end(), message.options[i].string.begin(),
@@ -253,7 +265,6 @@ auto Coap::decode(BytesView bytes) -> std::tuple<Message, Error> {
 	message.code = static_cast<Coap::Code>(header.getCode());
 	message.id = header.getMessageId();
 
-	auto tokensBegin = bytes.begin();
 	if(bytes.size() < offset + tokenLength) {
 		return {
 			message,
@@ -261,18 +272,25 @@ auto Coap::decode(BytesView bytes) -> std::tuple<Message, Error> {
 		};
 	}
 
+	auto tokensBegin = bytes.begin() + offset;
 	offset += tokenLength;
 	auto tokensEnd = bytes.begin() + offset;
 	message.tokens.assign(tokensBegin, tokensEnd);
 
+	OptionType prevOption;
 	while(offset < bytes.size()) {
 		if(bytes[offset] == 0xff) {
 			offset++;
 			break;
 		}
 
-		auto optionBytes = BytesView(bytes.begin() + offset,
-			bytes.begin() + offset + sizeof(OptionRepresentation));
+		std::cout << "Option looks like: " << std::bitset<8>(static_cast<int>(bytes[offset])) << '\n';
+
+		auto optionBegin = bytes.begin() + offset;
+		offset += sizeof(OptionRepresentation);
+		auto optionEnd = bytes.begin() + offset;
+
+		auto optionBytes = BytesView(optionBegin, optionEnd);
 		auto [optionRep, err] = fromBytes<OptionRepresentation>(optionBytes);
 		if(err) {
 			return {
@@ -282,29 +300,51 @@ auto Coap::decode(BytesView bytes) -> std::tuple<Message, Error> {
 		}
 
 		Option option;
-		option.type = static_cast<Coap::OptionType>(optionRep.getType());
+
+		// Fråga någon nisse om det här, makear ingen sense
+		if(optionRep.getType() == 0) {
+			option.type = prevOption;
+		} else {
+			option.type = static_cast<Coap::OptionType>(optionRep.getType());
+		}
 
 		auto valueBegin = bytes.begin() + offset;
 		offset += optionRep.getLength();
 		auto valueEnd = bytes.begin() + offset;
+		auto valueBytes = BytesView(valueBegin, valueEnd);
 
-		if(option.isInteger()) {
-			auto valueBytes = BytesView(valueBegin, valueEnd);
-			auto [value, err] = fromBytes<uint32_t>(valueBytes);
-			if(err) {
-				return {
-					message,
-					err,
-				};
+		if(valueBytes.size() > 0) {
+			if(option.isUint32()) {
+				auto [value, err] = fromBytes<uint32_t>(valueBytes);
+				if(err) {
+					return {
+						message,
+						err,
+					};
+				}
+
+				option.uint32 = value;
+			} else if(option.isUint16()) {
+				auto [value, err] = fromBytes<uint16_t>(valueBytes);
+				if(err) {
+					return {
+						message,
+						err,
+					};
+				}
+
+				option.uint16 = value;
+			} else if(option.isString()) {
+				option.string.assign(valueBegin, valueEnd);
 			}
-
-			option.integer = value;
-		} else if(option.isString()) {
-			option.string.assign(valueBegin, valueEnd);
+		} else {
+			option.uint16 = 0;
+			option.uint32 = 0;
+			option.string = "";
 		}
 
 		message.options.push_back(option);
-		offset++;
+		prevOption = option.type;
 	}
 
 	if(bytes.size() < offset) {
@@ -354,8 +394,10 @@ auto Coap::HeaderRepresentation::setMessageId(uint32_t id) -> void {
 auto Coap::OptionRepresentation::fromOption(const Option& option) -> OptionRepresentation {
 	OptionRepresentation optionRep;
 	optionRep.setType(option.type);
-	if(option.isInteger()) {
+	if(option.isUint32()) {
 		optionRep.setLength(sizeof(uint32_t));
+	} else if(option.isUint16()) {
+		optionRep.setLength(sizeof(uint16_t));
 	} else if(option.isString()) {
 		optionRep.setLength(option.string.size());
 	}
@@ -402,9 +444,11 @@ std::ostream& operator<<(std::ostream& os, const Coap::Message& message) {
 		<< " Options: { ";
 	for(const auto& opt : message.options) {
 		os << "Type: " << Coap::toString(opt.type)
-			<< "Value: ";
-		if(opt.isInteger()) {
-			os << opt.integer;
+			<< " Value: ";
+		if(opt.isUint32()) {
+			os << opt.uint32;
+		} else if(opt.isUint16()) {
+			os << opt.uint16;
 		} else if(opt.isString()) {
 			os << opt.string;
 		} else {
