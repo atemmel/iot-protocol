@@ -37,20 +37,5 @@ auto main() -> int {
 	auto [response, decodeError] = Coap::decode(bytes);
 	validate(decodeError);
 
-	std::cout 
-		<< "Type: " << response.type << '\n'
-		<< "Code: " << response.code << '\n'
-		<< "Id: " << response.id << "\nOptions:\n";
-
-	for(const auto& opt : response.options) {
-		std::cout << '\t' << opt.type << ' ';
-		if(opt.isInteger()) {
-			std::cout << opt.integer;
-		} else if(opt.isString()) {
-			std::cout << opt.string;
-		}
-		std::cout << '\n';
-	}
-
-	std::cout << "Payload size: " << response.payload.size() << '\n';
+	std::cout << response << '\n';
 }

@@ -30,6 +30,141 @@ auto Coap::Option::isString() const -> bool {
 	}
 }
 
+auto Coap::toString(Type type) -> std::string_view {
+	switch(type) {
+		case Confirmable:
+			return "Confirmable";
+		case NonConfirmable:
+			return "NonConfirmable";
+		case Acknowledgement:
+			return "Acknowledgement";
+		case Reset:
+			return "Reset";
+	}
+	return "Unrecognized";
+}
+
+auto Coap::toString(Code code) -> std::string_view {
+	switch(code) {
+		case Empty:
+			return "Empty";
+		case Get:
+			return "Get";
+		case Post :
+			return "Post";
+		case Put :
+			return "Put";
+		case Delete :
+			return "Delete";
+		case Created :
+			return "Created";
+		case Deleted :
+			return "Deleted";
+		case Valid :
+			return "Valid";
+		case Changed :
+			return "Changed";
+		case Content :
+			return "Content";
+		case Continue :
+			return "Continue";
+		case BadRequest :
+			return "BadRequest";
+		case Unauthorized :
+			return "Unauthorized";
+		case BadOption :
+			return "BadOption";
+		case Forbidden :
+			return "Forbidden";
+		case NotFound :
+			return "NotFound";
+		case MethodNotAllowed :
+			return "MethodNotAllowed";
+		case NotAcceptable :
+			return "NotAcceptable";
+		case RequestEntityIncomplete :
+			return "RequestEntityIncomplete";
+		case PreconditionFailed :
+			return "PreconditionFailed";
+		case RequestEntityTooLarge :
+			return "RequestEntityTooLarge";
+		case UnsupportedContentFormat :
+			return "UnsupportedContentFormat";
+		case InternalServerError :
+			return "InternalServerError";
+		case NotImplemented :
+			return "NotImplemented";
+		case BadGateway :
+			return "BadGateway";
+		case ServiceUnavailable :
+			return "ServiceUnavailable";
+		case GatewayTimeout :
+			return "GatewayTimeout";
+		case ProxyingNotSupported:
+			return "ProxyingNotSupported";
+	}
+	return "Unrecognized";
+}
+
+auto Coap::toString(OptionType optionType) -> std::string_view {
+	switch(optionType) {
+		case IfMatch:
+			return "IfMatch";
+		case UriHost:
+			return "UriHost";
+		case ETag:
+			return "ETag";
+		case IfNoneMatch:
+			return "IfNoneMatch";
+		case UriPort:
+			return "UriPort";
+		case LocationPath:
+			return "LocationPath";
+		case UriPath:
+			return "UriPath";
+		case ContentFormat:
+			return "ContentFormat";
+		case MaxAge:
+			return "MaxAge";
+		case UriQuery:
+			return "UriQuery";
+		case Accept:
+			return "Accept";
+		case LocationQuery:
+			return "LocationQuery";
+		case Size2:
+			return "Size2";
+		case ProxyUri:
+			return "ProxyUri";
+		case ProxyScheme:
+			return "ProxyScheme";
+		case Size1:
+			return "Size1";
+	}
+	return "Unrecognized";
+}
+
+auto Coap::toString(ContentFormats format) -> std::string_view {
+	switch(format) {
+		case Text:
+			return "Text";
+		case LinkFormat:
+			return "LinkFormat";
+		case Xml:
+			return "Xml";
+		case OctetStream:
+			return "OctetStream";
+		case Exi:
+			return "Exi";
+		case Json:
+			return "Json";
+		case Cbor:
+			return "Cbor";
+	}
+	return "Unrecognized";
+}
+
+
 auto Coap::encode(const Message& message) -> Bytes {
 	auto header = HeaderRepresentation::fromMessage(message);
 	std::vector<OptionRepresentation> options(message.options.size());
@@ -257,4 +392,26 @@ auto Coap::OptionRepresentation::getType()  const-> uint8_t {
 
 auto Coap::OptionRepresentation::getLength() const -> uint8_t {
 	return getIntSegment(data, lengthMask, lengthShift);
+}
+
+std::ostream& operator<<(std::ostream& os, const Coap::Message& message) {
+	os << "Type: " << Coap::toString(message.type) 
+		<< " Code: " << Coap::toString(message.code) 
+		<< " Id: " << message.id
+		<< " Tokens: " << message.tokens.size()
+		<< " Options: { ";
+	for(const auto& opt : message.options) {
+		os << "Type: " << Coap::toString(opt.type)
+			<< "Value: ";
+		if(opt.isInteger()) {
+			os << opt.integer;
+		} else if(opt.isString()) {
+			os << opt.string;
+		} else {
+			os << "???";
+		}
+		os << ' ';
+	}
+	os << "} ";
+	return os << " Payload length: " << message.payload.size();
 }

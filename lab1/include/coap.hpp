@@ -94,6 +94,11 @@ public:
 		Bytes payload;
 	};
 
+	static auto toString(Type type) -> std::string_view;
+	static auto toString(Code code) -> std::string_view;
+	static auto toString(OptionType optionType) -> std::string_view;
+	static auto toString(ContentFormats format) -> std::string_view;
+
 	static auto encode(const Message& message) -> Bytes;
 	static auto decode(BytesView bytes) -> std::tuple<Message, Error>;
 
@@ -162,3 +167,5 @@ private:
 		auto getLength() const -> uint8_t;
 	};
 };
+
+std::ostream& operator<<(std::ostream& os, const Coap::Message& message);
