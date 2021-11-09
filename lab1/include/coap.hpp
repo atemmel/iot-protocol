@@ -105,6 +105,8 @@ public:
 	static auto decode(BytesView bytes) -> std::tuple<Message, Error>;
 
 private:
+	static auto decodeHeader(Message& message, BytesView bytes, size_t& offset) -> Error;
+
 	struct HeaderRepresentation {
 	private:
 		constexpr static uint32_t versionMask = 0b11000000000000000000000000000000;

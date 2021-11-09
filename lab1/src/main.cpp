@@ -13,27 +13,11 @@ auto sendMessage(UnixUdpSocket& socket, const Coap::Message& message) {
 	auto bytes = Coap::encode(message);
 	uint32_t len;
 
-	/*
-	std::cout << "BYTES:\n\n";
-	for(int byte : bytes) {
-		std::cout << std::hex << std::setw(2) << std::setfill('0')
-			<< byte << ' ';
-	}
-	std::cout << std::dec << "\n\n";
-	*/
-
 	std::tie(len, err) = socket.write(bytes);
 	validate(err);
 
 	std::tie(bytes, err) = socket.read(1024);
 	validate(err);
-
-	std::cout << "BYTES:\n\n";
-	for(int byte : bytes) {
-		std::cout << std::hex << std::setw(2) << std::setfill('0')
-			<< byte << ' ';
-	}
-	std::cout << std::dec << "\n\n";
 
 	auto [response, decodeError] = Coap::decode(bytes);
 	validate(decodeError);
@@ -92,6 +76,11 @@ auto main() -> int {
 		.payload = {},
 	};
 
+	const std::string_view payloadString = "woop woop";
+	Bytes payload(payloadString.size());
+	std::copy(payloadString.begin(), payloadString.end(),
+			payload.begin());
+
 	const Coap::Message putRequest = {
 		.type = Coap::Type::Confirmable,
 		.code = Coap::Code::Put,
@@ -103,7 +92,7 @@ auto main() -> int {
 				.type = Coap::OptionType::UriPath,
 			}
 		},
-		.payload = {},
+		.payload = payload,
 	};
 
 	// OK
@@ -111,12 +100,46 @@ auto main() -> int {
 	sendMessage(socket, getRequest);
 
 	// OK
-	//std::cout << "Delete request:\n";
-	//sendMessage(socket, deleteRequest);
+	std::cout << "Delete request:\n";
+	sendMessage(socket, deleteRequest);
 
-	//std::cout << "Post request:\n";
-	//sendMessage(socket, postRequest);
+	std::cout << "Post request:\n";
+	sendMessage(socket, postRequest);
 
-	//std::cout << "Put request:\n";
-	//sendMessage(socket, putRequest);
+	std::cout << "Put in sink:\n";
+	sendMessage(socket, putRequest);
+
+	Coap::Message getSinkMessage = {
+		.type = Coap::Type::Confirmable,
+		.code = Coap::Code::Get,
+		.id = 1235,
+		.tokens = {},
+		.options = {
+			{
+				.string = "sink",
+				.type = Coap::OptionType::UriPath,
+			}
+		},
+		.payload = {},
+	};
+
+	std::cout << "Get from sink:\n";
+	sendMessage(socket, getSinkMessage);
+
+	std::cout << "Delete from sink:\n";
+	sendMessage(socket, Coap::Message{
+		.type = Coap::Type::Confirmable,
+		.code = Coap::Code::Delete,
+		.id = 1236,
+		.tokens = {},
+		.options = {
+			{
+				.string = "sink",
+				.type = Coap::OptionType::UriPath,
+			}
+		},
+	});
+
+	std::cout << "Get from sink:\n";
+	sendMessage(socket, getSinkMessage);
 }

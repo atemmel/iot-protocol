@@ -232,39 +232,18 @@ auto Coap::encode(const Message& message) -> Bytes {
 }
 
 auto Coap::decode(BytesView bytes) -> std::tuple<Message, Error> {
-	size_t offset = sizeof(HeaderRepresentation);
+	size_t offset = 0;
 	Message message;
 
-	if(bytes.size() < offset) {
+	auto err = decodeHeader(message, bytes, offset);
+	if(err) {
 		return {
 			message,
-			"Bytes did not contain a header",
+			err,
 		};
 	}
 
-	auto headerBytes = BytesView(bytes.begin(), bytes.begin() + offset);
-	auto [header, headerErr] = fromBytes<HeaderRepresentation>(headerBytes);
-
-	if(headerErr) {
-		return {
-			message,
-			headerErr,
-		};
-	}
-
-	uint32_t version = header.getVersion();
-	if(version != 1) {
-		return {
-			message,
-			"Message had a bad version ( != 1)",
-		};
-	}
-
-	message.type = static_cast<Coap::Type>(header.getType());
-	uint32_t tokenLength = header.getTokenLength();
-	message.code = static_cast<Coap::Code>(header.getCode());
-	message.id = header.getMessageId();
-
+	uint32_t tokenLength = message.tokens.size();
 	if(bytes.size() < offset + tokenLength) {
 		return {
 			message,
@@ -284,7 +263,12 @@ auto Coap::decode(BytesView bytes) -> std::tuple<Message, Error> {
 			break;
 		}
 
-		std::cout << "Option looks like: " << std::bitset<8>(static_cast<int>(bytes[offset])) << '\n';
+		/*
+		std::cout << "Option looks like: " 
+			<< std::bitset<8>(static_cast<int>(bytes[offset])) << ' '
+			<< std::hex << static_cast<int>(bytes[offset]) << ' '
+			<< std::dec << bytes[offset] << '\n';
+		*/
 
 		auto optionBegin = bytes.begin() + offset;
 		offset += sizeof(OptionRepresentation);
@@ -359,6 +343,31 @@ auto Coap::decode(BytesView bytes) -> std::tuple<Message, Error> {
 		message,
 		nullptr
 	};
+}
+
+auto Coap::decodeHeader(Message& message, BytesView bytes, size_t& offset) -> Error {
+	offset += sizeof(HeaderRepresentation);
+	if(bytes.size() < offset) {
+		return "Bytes did not contain a header";
+	}
+
+	auto headerBytes = BytesView(bytes.begin(), bytes.begin() + offset);
+	auto [header, headerErr] = fromBytes<HeaderRepresentation>(headerBytes);
+
+	if(headerErr) {
+		return headerErr;
+	}
+
+	uint32_t version = header.getVersion();
+	if(version != 1) {
+		return "Message had a bad version ( != 1)";
+	}
+
+	message.type = static_cast<Coap::Type>(header.getType());
+	message.code = static_cast<Coap::Code>(header.getCode());
+	message.id = header.getMessageId();
+	message.tokens.resize(header.getTokenLength());
+	return nullptr;
 }
 
 auto Coap::HeaderRepresentation::fromMessage(const Message& message) -> HeaderRepresentation {
@@ -445,7 +454,9 @@ std::ostream& operator<<(std::ostream& os, const Coap::Message& message) {
 	for(const auto& opt : message.options) {
 		os << "Type: " << Coap::toString(opt.type)
 			<< " Value: ";
-		if(opt.isUint32()) {
+		if(opt.type == Coap::ContentFormat) {
+			os << Coap::toString(static_cast<Coap::ContentFormats>(opt.uint16));
+		} else if(opt.isUint32()) {
 			os << opt.uint32;
 		} else if(opt.isUint16()) {
 			os << opt.uint16;
