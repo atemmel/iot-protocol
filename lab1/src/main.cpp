@@ -25,7 +25,7 @@ auto sendMessage(UnixUdpSocket& socket, const Coap::Message& message) {
 	std::cout << "Response: " << response << '\n';
 	auto view = std::string(response.payload.begin(),
 		response.payload.end());
-	std::cout << view << "\n\n";
+	std::cout << view << "\n";
 }
 
 auto main() -> int {
@@ -34,6 +34,7 @@ auto main() -> int {
 	err = socket.connect("coap.me", 5683);
 	validate(err);
 
+	/*
 	const Coap::Message getRequest = {
 		.type = Coap::Type::Confirmable,
 		.code = Coap::Code::Get,
@@ -142,4 +143,58 @@ auto main() -> int {
 
 	std::cout << "Get from sink:\n";
 	sendMessage(socket, getSinkMessage);
+
+	std::cout << "Post to sink\n";
+	sendMessage(socket, Coap::Message{
+		.type = Coap::Type::Confirmable,
+		.code = Coap::Code::Post,
+		.id = 1237,
+		.tokens = {},
+		.options = {
+			{
+				.string = "sink",
+				.type = Coap::OptionType::UriPath,
+			}
+		},
+		.payload = payload,
+	});
+
+	std::cout << "Get from sink:\n";
+	sendMessage(socket, getSinkMessage);
+	*/
+
+	uint32_t id = 50;
+	while(true) {
+		uint32_t code;
+		std::string path, payload;
+		std::cout << "Write method code:\n"
+			"0: Empty\n"
+			"1: Get\n"
+			"2: Post\n"
+			"3: Put\n"
+			"4: Delete\n?: ";
+		if(!(std::cin >> code)) {
+			continue;
+		}
+		std::cin.ignore(1024, '\n');
+		std::cout << "Write uri path:\n?: ";
+		std::getline(std::cin, path);
+		std::cout << "(Optional) Write payload:\n?: ";
+		std::getline(std::cin, payload);
+
+		sendMessage(socket, Coap::Message{
+			.type = Coap::Type::Confirmable,
+			.code = static_cast<Coap::Code>(code),
+			.id = id++,
+			.tokens = {},
+			.options = {
+				{
+					.string = path,
+					.type = Coap::OptionType::UriPath,
+				}
+			},
+			.payload = !payload.empty()
+				? Bytes(payload.begin(), payload.end()) : Bytes(),
+		});
+	}
 }

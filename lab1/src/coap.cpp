@@ -256,7 +256,7 @@ auto Coap::decode(BytesView bytes) -> std::tuple<Message, Error> {
 	auto tokensEnd = bytes.begin() + offset;
 	message.tokens.assign(tokensBegin, tokensEnd);
 
-	OptionType prevOption;
+	uint32_t prevDelta = 0;
 	while(offset < bytes.size()) {
 		if(bytes[offset] == 0xff) {
 			offset++;
@@ -285,12 +285,8 @@ auto Coap::decode(BytesView bytes) -> std::tuple<Message, Error> {
 
 		Option option;
 
-		// Fråga någon nisse om det här, makear ingen sense
-		if(optionRep.getType() == 0) {
-			option.type = prevOption;
-		} else {
-			option.type = static_cast<Coap::OptionType>(optionRep.getType());
-		}
+		prevDelta += optionRep.getType();
+		option.type = static_cast<Coap::OptionType>(prevDelta);
 
 		auto valueBegin = bytes.begin() + offset;
 		offset += optionRep.getLength();
@@ -328,7 +324,6 @@ auto Coap::decode(BytesView bytes) -> std::tuple<Message, Error> {
 		}
 
 		message.options.push_back(option);
-		prevOption = option.type;
 	}
 
 	if(bytes.size() < offset) {
