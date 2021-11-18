@@ -50,6 +50,46 @@ auto UnixTcpSocket::connect(std::string_view address, uint16_t port) -> Error {
 	return "Could not connect to address/port combination";
 }
 
+auto UnixTcpSocket::listen(uint16_t port) -> Error {
+	
+	sockaddr_in hint;
+	hint.sin_family = AF_INET;
+	hint.sin_port = htons(port);
+	hint.sin_addr.s_addr = INADDR_ANY;
+
+	int result = bind(fd, reinterpret_cast<const sockaddr*>(&hint), sizeof hint);
+	if(result != 0) {
+		return "Error binding port";
+	}
+
+	result = ::listen(fd, 256);
+
+	if(result != 0) {
+		return "Could not set socket into listening state";
+	}
+
+	return nullptr;
+}
+
+auto UnixTcpSocket::accept() -> std::tuple<UnixTcpSocket, Error> {
+
+	int cfd = ::accept(fd, nullptr, nullptr);
+	if(cfd == -1) {
+		return {
+			UnixTcpSocket(),
+			"Failed to accept incoming connection",
+		};
+	}
+
+	UnixTcpSocket client;
+	client.fd = cfd;
+
+	return {
+		client,
+		nullptr,
+	};
+}
+
 auto UnixTcpSocket::read(size_t howManyBytes) -> std::tuple<Bytes, Error> {
 	Bytes bytes(howManyBytes);
 	auto result = ::read(fd, bytes.data(), bytes.size());

@@ -2,6 +2,6 @@
 
 class MqttBroker {
 public:
-	void serve();
+	auto serve() -> void;
 private:
 };
