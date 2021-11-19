@@ -1,0 +1,408 @@
+\documentclass[a4paper, titlepage,12pt]{article}
+
+\usepackage[margin=3.7cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[swedish]{babel}
+\usepackage{csquotes}
+\usepackage[hyphens]{url}
+\usepackage{amsmath,amssymb,amsthm, amsfonts}
+\usepackage[backend=biber,citestyle=ieee]{biblatex}
+%\usepackage[yyyymmdd]{datetime}
+%\usepackage{titlesec} 
+\usepackage{graphicx}
+\usepackage{tabularx}
+\usepackage{listings}
+\usepackage{float}
+\usepackage{pgfgantt}
+
+\usepackage{xcolor}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codepurple}{rgb}{0.5,0,0.5}
+\definecolor{backcolor}{rgb}{0.97,0.97,0.97}
+
+\usepackage[backend=biber,citestyle=ieee]{biblatex}
+\addbibresource{./literature.bib}
+
+\lstdefinestyle{mystyle}{
+	commentstyle=\color{codegreen},
+	keywordstyle=\color{magenta},
+	numberstyle=\color{gray}\ttfamily\footnotesize,
+	backgroundcolor=\color{backcolor},
+	basicstyle=\ttfamily\footnotesize,
+	stringstyle=\color{codepurple},
+	numbers=left,
+	tabsize=4
+}
+
+\lstset{style=mystyle}
+
+\title{Implementing Internet of Things protocols\\
+Lab 1}
+
+\author{Adam Temmel (adte1700)}
+
+\begin{document}
+	\maketitle
+	\section{Environment}
+	This lab was done on a unix system using C++ and the standard C \lstinline{socket} libraries\cite{socket}. Most of the testing was done against various \lstinline{coap.me} endpoints and the final evaluation tests were exclusively performed on \lstinline{coap.me}.
+	\section{Abstractions}
+	As the lab exercise does not involve the usage of any external libraries or frameworks, one of the first things to do within the project is to implement certain abstractions to assist in the development process down the line. 
+		\subsection{Byte-related}
+		As C++ does not implement any general byte management/manipulation features besides \lstinline{std::bitset}, a few abstractions can be made to help in this regard. The first abstraction worthy to discuss is a generic \lstinline{View} class. This class was meant to be used as a way to reinterpret data structures into an iterable sequence of bytes.
+
+		\begin{lstlisting}[language=C++]
+template<typename T>
+class View { // Provides a view of data
+public:
+	template<typename U> // Create from pointer and length
+	View(const U* a, size_t length) : first(a), 
+		last(a + length) {}
+
+	template<typename U> // Create from iterators
+	View(const U a, const U b) : first(&*a), last(&*b) {}
+
+	template<typename Container> // Create from container
+	View(const Container& container) : 
+		first(reinterpret_cast<const T*>(&*container.begin())), 
+		last(reinterpret_cast<const T*>(&*container.end())) {}
+
+	auto size() const -> size_t {
+		return std::distance(first, last);
+	}
+	auto begin() const -> const T* {
+		return first;
+	}
+	auto end() const -> const T* {
+		return last;
+	}
+	auto data() const -> const T* {
+		return first;
+	}
+	auto operator[](size_t index) const -> const T& {
+		return first[index];
+	}
+
+private:
+	const T* first;	// Beginning of data
+	const T* last;	// End of data
+};
+		\end{lstlisting}
+
+		A few more type aliases was also defined so as to make the code easier to read and write. These are mentioned below to make the report more comprehensive.
+
+		\begin{lstlisting}[language=C++]
+using Byte = unsigned char;		 // Readability
+using Bytes = std::vector<Byte>; // 'Owned' array of bytes
+using BytesView = View<Byte>;	 // View of bytes
+		\end{lstlisting}
+
+		Two general functions was authored with the intent to assist in reading and writing data on a bit level.
+
+		\begin{lstlisting}[language=C++]
+// Get specified bit(s)
+template<typename T, std::enable_if_t<
+		std::is_integral<T>::value, bool> = true>
+auto getIntSegment(T data, T mask, T shift) {
+	return (data & mask) >> shift;
+}
+
+// Set specified bit(s)
+template<typename T, std::enable_if_t<
+		std::is_integral<T>::value, bool> = true>
+auto setIntSegment(T& data, T value, T mask, T shift) {
+	data = (data & ~mask) | ((value << shift) & mask);
+}
+		\end{lstlisting}
+
+		Lastly, additional functionality for translating between byte views and big-endian integers\cite{endianness} was also implemented. This was written as a class for reinterpreting integers as byte views and as a function for reinterpreting byte views as an integer.
+
+		\begin{lstlisting}[language=C++]
+// Big-endian integers to bytes
+template<typename T>
+struct AsBytes {	
+	AsBytes(const T& underlying) : underlying(underlying) {}
+
+	struct Iterator;
+
+	// Iterator to last element
+	auto begin() const -> Iterator { 
+		auto base = reinterpret_cast<const Byte*>(&underlying);
+		return Iterator(base + sizeof underlying - 1);
+	}
+	// Iterator to element before first
+	auto end() const -> Iterator { 
+		auto base = reinterpret_cast<const Byte*>(&underlying);
+		return Iterator(base - 1);
+	}
+
+	struct Iterator {
+		using iterator_category = std::input_iterator_tag;
+		using value_type = Byte;
+		using difference_type = std::ptrdiff_t;
+		using pointer = Byte*;
+		using reference = Byte&;
+
+		Iterator() = default;
+		Iterator(const Byte* address) : ptr(address) {}
+
+		// Some general functions omitted
+		...
+
+
+		// Increment iterates backwards
+		auto operator++() -> Iterator{
+			return ptr--;
+		}
+
+		// Decrement iterates forwards
+		auto operator--() -> Iterator{
+			return ptr++;
+		}
+
+	private:
+		const Byte* ptr = nullptr;
+	};
+
+private:
+	const T& underlying;
+};
+		\end{lstlisting}
+
+		\begin{lstlisting}[language=C++]
+// Byte view to big-endian integers
+template<typename T>
+auto fromBytes(BytesView bytes) -> std::tuple<T, Error> {
+	T value;
+	Byte* valueBegin = reinterpret_cast<Byte*>(&value);
+
+	if(sizeof(T) != bytes.size()) {
+		return {
+			T(),
+			"Size mismatch between byte view and conversion type",
+		};
+	} else if(bytes.data() == nullptr) {
+		return {
+			T(),
+			"Byte view points to null",
+		};
+	}
+
+	auto byteBegin = bytes.end() - 1;
+	auto byteEnd = bytes.begin() -1;
+	while(byteBegin != byteEnd) {
+		*valueBegin++ = *byteBegin--;
+	}
+
+	return {
+		value,
+		nullptr,
+	};
+};
+		\end{lstlisting}
+
+		\subsection{Network-related}
+		Although most of the C socket API is fairly straightforward, it is very procedural by design and requires the passing of a file descriptor to every function call that is performed. As such, this was abstracted away into a class responsible for managing the file descriptor.
+
+		\begin{lstlisting}[language=C++]
+class UnixUdpSocket {
+public:
+	static auto create() -> std::tuple<UnixUdpSocket, Error>;
+
+	auto connect(std::string_view address, uint16_t port) -> Error;
+	auto read(size_t howManyBytes) -> std::tuple<Bytes, Error>;
+	auto write(const BytesView bytes) -> std::tuple<size_t, Error>;
+private:
+	int fd;
+};
+		\end{lstlisting}
+
+		In order to reach \lstinline{coap.me}, we need to resolve the web address into an IP address. Once again, there is a function available for this within one of the Unix-specific headers, called \lstinline{getaddrinfo}\cite{getaddrinfo}. This was abstracted away into an implementation which is more idiomatic to C++.
+	
+	\section{COAP implementation}
+		\subsection{Data representation}
+		The first step in implementing the COAP protocol was to map out the different pieces of the COAP protocol. Certain values are better phrased as \lstinline{enum}s, which can make certain pieces of the code easier to write in the long run.
+
+	\begin{lstlisting}[language=C++]
+class Coap {
+public:
+	enum Type : uint32_t {
+		Confirmable = 0,
+		NonConfirmable = 1,
+		...
+	};
+	enum Code : uint32_t {
+		Empty = 0,
+		Get = 1,
+		...
+	};
+	enum OptionType : uint32_t {
+		IfMatch = 1,
+		UriHost = 3,
+		...
+	};
+	enum ContentFormats : uint32_t {
+		Text = 0,
+		LinkFormat = 40,
+		...
+	};
+	...
+};
+	\end{lstlisting}
+
+			Next on the todolist is to create datastructures which can represent a COAP message as well as individual components of a COAP message.
+
+	\begin{lstlisting}[language=C++]
+class Coap {
+	...
+	struct Option {
+		// Potential content types are packed together here
+		uint32_t uint16;
+		uint32_t uint32;
+		std::string string;
+		// Type is also used to understand the content type
+		OptionType type;
+
+		// Checking can be done to deduce the content type
+		auto isUint16() const -> bool;
+		auto isUint32() const -> bool;
+		auto isString() const -> bool;
+	};
+
+	struct Message {
+		Type type;
+		Code code;
+		uint32_t id;
+		Bytes tokens;
+		std::vector<Option> options;
+		Bytes payload;
+	};
+	...
+};
+	\end{lstlisting}
+
+			Intermediate representations of the message header as well as the option header was also created, to assist in the data encoding/decoding process.
+
+	\begin{lstlisting}[language=C++]
+class Coap:
+...
+private:
+	struct HeaderRepresentation {
+	private:
+		constexpr static uint32_t versionMask = 
+			0b11000000000000000000000000000000;
+		constexpr static uint32_t versionShift = 30u;
+
+		constexpr static uint32_t typeMask = 
+			0b00110000000000000000000000000000;
+		constexpr static uint32_t typeShift = 28u;
+
+		// Additional mask + shift combinations omitted
+		...
+	public:
+		uint32_t data = 0; // Underlying data
+
+		// Helper function to create a header from a message
+		static auto fromMessage(const Message& message) 
+			-> HeaderRepresentation;
+
+		auto setVersion(uint32_t version) -> void;
+		auto setType(uint32_t type) -> void;
+
+		// Additional set-functions omitted
+		...
+
+		auto getVersion() const -> uint32_t;
+		auto getType() const -> uint32_t;
+
+		// Additional get-functions omitted
+		...
+	};
+	...
+};
+	\end{lstlisting}
+
+			With all the building blocks in place, all \lstinline{set} or \lstinline{get} functions just need to call \lstinline{setIntSegment} or \lstinline{getIntSegment} with the appropriate mask and shift, whereas the conversion between message and header representation is as easy as calling the appropriate \lstinline{set} functions.
+
+	\begin{lstlisting}[language=C++]
+auto Coap::HeaderRepresentation::fromMessage(
+	const Message& message) -> HeaderRepresentation {
+	HeaderRepresentation header;
+	header.setVersion(1);
+	header.setType(message.type);
+	header.setTokenLength(message.tokens.size());
+	header.setCode(message.code);
+	header.setMessageId(message.id);
+	return header;
+}
+
+auto Coap::HeaderRepresentation::setVersion(uint32_t version) 
+	-> void {
+	setIntSegment(data, version, versionMask, versionShift);
+}
+
+auto Coap::HeaderRepresentation::setType(uint32_t type) 
+	-> void {
+	setIntSegment(data, type, typeMask, typeShift);
+}
+
+auto Coap::HeaderRepresentation::getVersion() const 
+	-> uint32_t {
+	return getIntSegment(data, versionMask, versionShift);
+}
+auto Coap::HeaderRepresentation::getType() const 
+	-> uint32_t {
+	return getIntSegment(data, typeMask, typeShift);
+}
+	\end{lstlisting}
+
+			The same \lstinline{set} and \lstinline{get} strategy with the masks was implemented for a \lstinline{struct} named \lstinline{OptionRepresentation}. This struct also had a \lstinline{data} member, but it was here limited to being just a single byte. Likewise, the conversion function was also a tiny bit more complex due to how it needs to understand which value that the struct is meant to contain.
+
+	\begin{lstlisting}[language=C++]
+auto Coap::OptionRepresentation::fromOption(const Option& option) 
+	-> OptionRepresentation {
+	OptionRepresentation optionRep;
+	optionRep.setType(option.type);
+	if(option.isUint32()) {
+		optionRep.setLength(sizeof(uint32_t));
+	} else if(option.isUint16()) {
+		optionRep.setLength(sizeof(uint16_t));
+	} else if(option.isString()) {
+		optionRep.setLength(option.string.size());
+	}
+	return optionRep;
+}
+	\end{lstlisting}
+
+		\subsection{Encoding}
+		As encoding a message is often easier than to decode it, the encoding part of the protocol was built first. The first step in the encoding process was to convert all headers to their intermediate representations, as well as perform some bookkeeping regarding the message length.
+
+		\begin{lstlisting}[language=C++]
+auto Coap::encode(const Message& message) -> Bytes {
+	// Create a header representation
+	auto header = HeaderRepresentation::fromMessage(message);
+	// Create an array of option representations
+	std::vector<OptionRepresentation> options(
+		message.options.size());
+	// Insert all representation and sum total size of options
+	uint32_t sumOptionsDataSize = 0;
+	for(size_t i = 0; i < message.options.size(); i++) {
+		options[i] = OptionRepresentation::fromOption(
+			message.options[i]);
+		sumOptionsDataSize += options[i].getLength();
+	}
+	// Calculate total size of message
+	auto sumBytes = sizeof(header) // Header size
+		+ (options.size() * sizeof(Option)) // Option headers size
+		+ sumOptionsDataSize 	// Option values size
+		+ message.tokens.size() // Tokens size
+		+ message.payload.size() // Payload size
+		+ 1;	// Additional option-payload padding
+
+	Bytes bytes;
+	bytes.reserve(sumBytes);
+	...
+}
+		\end{lstlisting}
+	\printbibliography
+\end{document}

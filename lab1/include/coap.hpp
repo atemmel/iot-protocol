@@ -113,16 +113,16 @@ private:
 		constexpr static uint32_t versionShift = 30u;
 
 		constexpr static uint32_t typeMask = 0b00110000000000000000000000000000;
-		constexpr static uint32_t typeShift = 28;
+		constexpr static uint32_t typeShift = 28u;
 
 		constexpr static uint32_t tokenLengthMask = 0b00001111000000000000000000000000;
-		constexpr static uint32_t tokenLengthShift = 24;
+		constexpr static uint32_t tokenLengthShift = 24u;
 
 		constexpr static uint32_t codeMask = 0b00000000111111110000000000000000;
-		constexpr static uint32_t codeShift = 16;
+		constexpr static uint32_t codeShift = 16u;
 
 		constexpr static uint32_t messageIdMask = 0b00000000000000001111111111111111;
-		constexpr static uint32_t messageIdShift = 0;
+		constexpr static uint32_t messageIdShift = 0u;
 	public:
 		uint32_t data = 0;
 
