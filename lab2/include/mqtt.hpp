@@ -1,6 +1,10 @@
 #pragma once
 #include <cstdint>
 
+#include "common.hpp"
+
+//https://openlabpro.com/guide/mqtt-packet-format/
+
 // 2 1st bytes = header
 // first 4 bits = message type
 // 5th bit = DUP flag
@@ -39,7 +43,38 @@ public:
 		QosLevel level;
 		bool duplicate;
 		bool retain;
+		Bytes payload;
 	};
 
 private:
+	struct HeaderRepresentation {
+	private:
+		constexpr static uint8_t typeMask = 0b11110000;
+		constexpr static uint8_t typeShift = 4;
+
+		constexpr static uint8_t duplicateMask = 0b00001000;
+		constexpr static uint8_t duplicateShift = 3;
+
+		constexpr static uint8_t qosMask = 0b00000110;
+		constexpr static uint8_t qosShift = 1;
+
+		constexpr static uint8_t retainMask = 0b00000001;
+		constexpr static uint8_t retainShift = 0;
+	public:
+		uint8_t data;
+
+		static auto fromMessage(const Message& message) -> HeaderRepresentation;
+
+		auto setType(uint8_t type) -> void;
+		auto setDuplicate(uint8_t duplicate) -> void;
+		auto setQos(uint8_t qos) -> void;
+		auto setRetain(uint8_t retain) -> void;
+
+		auto getType() const -> uint8_t;
+		auto getDuplicate() const -> uint8_t;
+		auto getQos() const -> uint8_t;
+		auto getRetain() const -> uint8_t;
+	};
+
+
 };

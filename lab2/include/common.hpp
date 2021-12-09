@@ -21,8 +21,8 @@ public:
 
 	template<typename Container>
 	View(const Container& container) : 
-		first(reinterpret_cast<const unsigned char*>(&*container.begin())), 
-		last(reinterpret_cast<const unsigned char*>(&*container.end())) {}
+		first(reinterpret_cast<const T*>(&*container.begin())), 
+		last(reinterpret_cast<const T*>(&*container.end())) {}
 
 	auto size() const -> size_t {
 		return std::distance(first, last);

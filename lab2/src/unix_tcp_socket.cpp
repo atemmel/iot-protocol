@@ -6,6 +6,8 @@
 #include <netdb.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <errno.h>
+#include <string.h>
 
 auto UnixTcpSocket::create() -> std::tuple<UnixTcpSocket, Error> {
 	UnixTcpSocket tcpSocket;
@@ -21,10 +23,6 @@ auto UnixTcpSocket::create() -> std::tuple<UnixTcpSocket, Error> {
 		tcpSocket, 
 		nullptr,
 	};
-}
-
-UnixTcpSocket::~UnixTcpSocket() {
-	close(fd);
 }
 
 auto UnixTcpSocket::connect(std::string_view address, uint16_t port) -> Error {
@@ -57,7 +55,17 @@ auto UnixTcpSocket::listen(uint16_t port) -> Error {
 	hint.sin_port = htons(port);
 	hint.sin_addr.s_addr = INADDR_ANY;
 
-	int result = bind(fd, reinterpret_cast<const sockaddr*>(&hint), sizeof hint);
+	int opt = 1;
+
+	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+		return "Failed to set SO_REUSEADDR option";
+	}
+
+	if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)) < 0) {
+		return "Error setting SO_REUSEPORT option";
+	}
+
+	int result = ::bind(fd, reinterpret_cast<const sockaddr*>(&hint), sizeof hint);
 	if(result != 0) {
 		return "Error binding port";
 	}

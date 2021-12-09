@@ -9,8 +9,6 @@ class UnixTcpSocket {
 public:
 	static auto create() -> std::tuple<UnixTcpSocket, Error>;
 
-	~UnixTcpSocket();
-
 	auto connect(std::string_view address, uint16_t port) -> Error;
 	auto listen(uint16_t port) -> Error;
 	auto accept() -> std::tuple<UnixTcpSocket, Error>;
