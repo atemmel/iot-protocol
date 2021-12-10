@@ -1,7 +1,9 @@
 #pragma once
 #include <cstdint>
+#include <variant>
 
 #include "common.hpp"
+#include "unix_tcp_socket.hpp"
 
 //https://openlabpro.com/guide/mqtt-packet-format/
 
@@ -11,6 +13,7 @@
 // 6th and 7th bit - QoS Level
 // 8th bit RETAIN flag
 // 2nd byte = Remaining length, 1-4 bytes
+// the rest is payload
 
 class Mqtt {
 public:
@@ -38,15 +41,36 @@ public:
 		Lv2 = 2,
 	};
 
+	struct ConnectHeader {
+		std::string protocol;
+		std::string identifier;
+		uint16_t keepAlive;
+		uint8_t version;
+		uint8_t flags;
+	};
+
+	struct ConnackHeader {
+		uint8_t code;
+	};
+
 	struct Message {
 		Type type;
 		QosLevel level;
 		bool duplicate;
 		bool retain;
-		Bytes payload;
+
+		std::variant<ConnectHeader, ConnackHeader> content;
 	};
 
+	static auto toString(Type type) -> std::string_view;
+	static auto toString(QosLevel level) -> std::string_view;
+
+	static auto decode(UnixTcpSocket client) -> std::tuple<Message, Error>;
+	static auto encode(const Mqtt::Message& message) -> Bytes;
+
 private:
+	static auto decodeConnect(BytesView bytes) -> std::tuple<ConnectHeader, Error>;
+
 	struct HeaderRepresentation {
 	private:
 		constexpr static uint8_t typeMask = 0b11110000;
@@ -78,3 +102,5 @@ private:
 
 
 };
+
+std::ostream& operator<<(std::ostream& os, const Mqtt::Message& message);

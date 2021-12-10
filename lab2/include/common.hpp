@@ -62,8 +62,8 @@ auto setIntSegment(T& data, T value, T mask, T shift) {
 }
 
 template<typename T>
-struct AsBytes {
-	AsBytes(const T& underlying) : underlying(underlying) {}
+struct AsBigEndianBytes {
+	AsBigEndianBytes(const T& underlying) : underlying(underlying) {}
 
 	struct Iterator;
 	
@@ -125,7 +125,7 @@ private:
 };
 
 template<typename T>
-auto fromBytes(BytesView bytes) -> std::tuple<T, Error> {
+auto fromBigEndianBytes(BytesView bytes) -> std::tuple<T, Error> {
 	T value;
 	Byte* valueBegin = reinterpret_cast<Byte*>(&value);
 
@@ -145,6 +145,35 @@ auto fromBytes(BytesView bytes) -> std::tuple<T, Error> {
 	auto byteEnd = bytes.begin() -1;
 	while(byteBegin != byteEnd) {
 		*valueBegin++ = *byteBegin--;
+	}
+
+	return {
+		value,
+		nullptr,
+	};
+};
+
+template<typename T>
+auto fromLittleEndianBytes(BytesView bytes) -> std::tuple<T, Error> {
+	T value;
+	Byte* valueBegin = reinterpret_cast<Byte*>(&value);
+
+	if(sizeof(T) != bytes.size()) {
+		return {
+			T(),
+			"Size mismatch between byte view and conversion type",
+		};
+	} else if(bytes.data() == nullptr) {
+		return {
+			T(),
+			"Byte view points to null",
+		};
+	}
+
+	auto byteBegin = bytes.begin();
+	auto byteEnd = bytes.end();
+	while(byteBegin != byteEnd) {
+		*valueBegin++ = *byteBegin++;
 	}
 
 	return {
