@@ -25,6 +25,10 @@ auto UnixTcpSocket::create() -> std::tuple<UnixTcpSocket, Error> {
 	};
 }
 
+auto UnixTcpSocket::operator==(UnixTcpSocket other) const -> bool {
+	return fd == other.fd;
+}
+
 auto UnixTcpSocket::connect(std::string_view address, uint16_t port) -> Error {
 	sockaddr_in hint;
 	hint.sin_family = AF_INET;

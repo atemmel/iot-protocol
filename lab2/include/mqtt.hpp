@@ -53,13 +53,31 @@ public:
 		uint8_t code;
 	};
 
+
+	struct PublishHeader {
+		std::string topic;
+		std::string payload;
+		uint16_t id;
+	};
+
+	struct SubscribeHeader {
+		std::vector<std::string> topics;
+		std::vector<QosLevel> levels;
+		uint16_t id;
+	};
+
+	struct SubackHeader {
+		uint16_t id;
+		uint8_t payload;
+	};
+
 	struct Message {
 		Type type;
 		QosLevel level;
 		bool duplicate;
 		bool retain;
 
-		std::variant<ConnectHeader, ConnackHeader> content;
+		std::variant<ConnectHeader, ConnackHeader, PublishHeader, SubscribeHeader, SubackHeader> content;
 	};
 
 	static auto toString(Type type) -> std::string_view;
@@ -70,6 +88,8 @@ public:
 
 private:
 	static auto decodeConnect(BytesView bytes) -> std::tuple<ConnectHeader, Error>;
+	static auto decodePublish(BytesView bytes, QosLevel level) -> std::tuple<PublishHeader, Error>;
+	static auto decodeSubscribe(BytesView bytes) -> std::tuple<SubscribeHeader, Error>;
 
 	struct HeaderRepresentation {
 	private:

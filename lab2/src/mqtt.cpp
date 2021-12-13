@@ -31,6 +31,7 @@ auto Mqtt::toString(Type type) -> std::string_view {
 		case Disconnect:
 			return "Disconnect";
 	}
+	std::cerr << type << '\n';
 	return "Unrecognized";
 }
 
@@ -105,7 +106,6 @@ auto Mqtt::decode(UnixTcpSocket client) -> std::tuple<Message, Error> {
 
 	BytesView remainder(bytes);
 	
-	
 	switch(message.type) {
 		case Connect:
 			std::tie(message.content, err) = decodeConnect(remainder);
@@ -119,6 +119,13 @@ auto Mqtt::decode(UnixTcpSocket client) -> std::tuple<Message, Error> {
 		case Connack:
 			break;
 		case Publish:
+			std::tie(message.content, err) = decodePublish(remainder, message.level);
+			if(err) {
+				return {
+					message,
+					err,
+				};
+			}
 			break;
 		case Pubrec:
 			break;
@@ -129,6 +136,13 @@ auto Mqtt::decode(UnixTcpSocket client) -> std::tuple<Message, Error> {
 		case Puback:
 			break;
 		case Subscribe:
+			std::tie(message.content, err) = decodeSubscribe(remainder);
+			if(err) {
+				return {
+					message,
+					err,
+				};
+			}
 			break;
 		case Suback:
 			break;
@@ -156,6 +170,8 @@ auto Mqtt::encode(const Mqtt::Message& message) -> Bytes {
 	size_t finalSize = sizeof(HeaderRepresentation);
 	if(std::get_if<Mqtt::ConnackHeader>(&message.content)) {
 		finalSize += 1 + 2;
+	} else if(std::get_if<Mqtt::SubackHeader>(&message.content)) {
+		finalSize += 2 + 1;
 	} else {
 		validate("Unknown message type");
 	}
@@ -165,9 +181,13 @@ auto Mqtt::encode(const Mqtt::Message& message) -> Bytes {
 	auto header = HeaderRepresentation::fromMessage(message);
 	bytes.insert(bytes.end(), header.data);
 
-	if(auto content = std::get_if<Mqtt::ConnackHeader>(&message.content); content) {
+	if(auto connack = std::get_if<Mqtt::ConnackHeader>(&message.content); connack) {
 		bytes.insert(bytes.end(), {2, 0});
-		bytes.insert(bytes.end(), content->code);
+		bytes.insert(bytes.end(), connack->code);
+	} else if(auto suback = std::get_if<Mqtt::SubackHeader>(&message.content); suback) {
+		auto idBytes = AsBigEndianBytes(suback->id);
+		bytes.insert(bytes.end(), idBytes.begin(), idBytes.end());
+		bytes.insert(bytes.end(), suback->payload);
 	}
 
 	return bytes;
@@ -267,6 +287,139 @@ auto Mqtt::decodeConnect(BytesView bytes) -> std::tuple<ConnectHeader, Error> {
 	};
 }
 
+auto Mqtt::decodePublish(BytesView bytes, QosLevel level) -> std::tuple<PublishHeader, Error> {
+	PublishHeader header;
+	if(bytes.size() < 2) {
+		return {
+			header,
+			"Bytes not long enough to fit header",
+		};
+	}
+
+	auto varHeaderBytes = BytesView(bytes.begin(), bytes.begin() + 2);
+	auto [varHeaderLength, varHeaderErr] = fromBigEndianBytes<uint16_t>(varHeaderBytes);
+	if(varHeaderErr) {
+		return {
+			header,
+			varHeaderErr,
+		};
+	}
+
+	header.topic.resize(varHeaderLength);
+	std::copy(bytes.begin() + 2, bytes.begin() + 2 + varHeaderLength, header.topic.begin());
+	
+	size_t offset = 2 + varHeaderLength;
+	
+	if(bytes.size() < offset + 1) {
+		return {
+			header,
+			level == QosLevel::Lv0 
+				? "Bytes not long enough to fit topic name" 
+				: "Bytes not long enough to fit QoS level",
+		};
+	}
+
+	// id field only present in QoS 1 and 2
+	if(level != QosLevel::Lv0) {
+		auto idBytes = BytesView(bytes.begin() + offset, bytes.begin() + offset + 2);
+		auto [id, idErr] = fromBigEndianBytes<uint16_t>(idBytes);
+		if(idErr) {
+			return {
+				header,
+				idErr,
+			};
+		}
+
+		header.id = id;
+		offset += 2;
+	}
+
+	header.payload.resize(bytes.size() - offset);
+	std::copy(bytes.begin() + offset, bytes.end(), header.payload.begin());
+
+	return {
+		header,
+		nullptr,
+	};
+}
+
+auto Mqtt::decodeSubscribe(BytesView bytes) -> std::tuple<SubscribeHeader, Error> {
+	SubscribeHeader header;
+	std::string topic;
+	uint8_t level;
+	size_t offset = 0;
+
+	if(bytes.size() < 2) {
+		return {
+			header,
+			"Bytes not long enough to fit message id",
+		};
+	}
+
+	auto idBytes = BytesView(bytes.begin(), bytes.begin() + 2);
+	auto [id, idErr] = fromBigEndianBytes<uint16_t>(idBytes);
+	if(idErr) {
+		return {
+			header,
+			idErr,
+		};
+	}
+
+	header.id = id;
+	offset += 2;
+
+	while(offset < bytes.size()) {
+		if(bytes.size() < offset + 2) {
+			return {
+				header,
+				"Bytes not long enough to fit topic length",
+			};
+		}
+
+		auto topicLengthBytes = BytesView(bytes.begin() + offset, bytes.begin() + offset + 2);
+		auto [topicLength, topicLengthErr] = fromBigEndianBytes<uint16_t>(topicLengthBytes);
+		if(topicLengthErr) {
+			return {
+				header,
+				topicLengthErr,
+			};
+		}
+
+		offset += 2;
+
+		if(bytes.size() < offset + topicLength) {
+			std::cerr << bytes.size() << ' ' << (offset + topicLength) << '\n';
+			return {
+				header,
+				"Bytes not enough to fit topic",
+			};
+		}
+
+		topic.resize(topicLength);
+		std::copy(bytes.begin() + offset, bytes.begin() + offset + topicLength, topic.begin());
+
+		offset += topicLength;
+
+		if(bytes.size() < offset + 1) {
+			return {
+				header,
+				"Bytes not enough to fit QoS level",
+			};
+		}
+
+		level = bytes[offset];
+		offset++;
+
+		header.topics.push_back(topic);
+		header.levels.push_back(static_cast<QosLevel>(level));
+	}
+
+	return {
+		header,
+		nullptr,
+	};
+}
+
 auto Mqtt::HeaderRepresentation::fromMessage(const Message& message) -> HeaderRepresentation {
 	HeaderRepresentation header;
 	header.setType(static_cast<uint8_t>(message.type));
@@ -314,11 +467,27 @@ std::ostream& operator<<(std::ostream& os, const Mqtt::Message& message) {
 		<< ", Duplicate: " << (message.duplicate ? "true" : "false")
 		<< ", Retain: " << (message.retain ? "true" : "false");
 
-	if(auto connect = std::get_if<Mqtt::ConnectHeader>(&message.content); connect) {
+	if(auto connect = std::get_if<Mqtt::ConnectHeader>(&message.content); connect 
+			&& message.type == Mqtt::Connect) {
 		os << ", Protocol: " << connect->protocol 
 			<< ", Identifier: " << connect->identifier
 			<< ", Keep-alive: " << connect->keepAlive
 			<< ", Version: " << static_cast<int>(connect->version);
+	} else if(auto publish = std::get_if<Mqtt::PublishHeader>(&message.content); publish 
+			&& message.type == Mqtt::Publish) {
+		os << ", Topic: " << publish->topic
+			<< ", Id: " << publish->id
+			<< ", Payload: " << publish->payload;
+	} else if(auto subscribe = std::get_if<Mqtt::SubscribeHeader>(&message.content); subscribe
+			&& message.type == Mqtt::Subscribe) {
+		os << ", Topics: ";
+		for(auto& topic : subscribe->topics) {
+			os << topic << ", ";
+		}
+		os << " Levels: ";
+		for(auto& level : subscribe->levels) {
+			os << Mqtt::toString(level) << ", ";
+		}
 	}
 
 	return os;
