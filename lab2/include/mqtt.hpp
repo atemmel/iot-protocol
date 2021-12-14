@@ -53,7 +53,6 @@ public:
 		uint8_t code;
 	};
 
-
 	struct PublishHeader {
 		std::string topic;
 		std::string payload;
@@ -67,8 +66,13 @@ public:
 	};
 
 	struct SubackHeader {
+		std::vector<Byte> payload;
 		uint16_t id;
-		uint8_t payload;
+	};
+
+	struct UnsubscribeHeader {
+		std::vector<std::string> topics;
+		uint16_t id;
 	};
 
 	struct Message {
@@ -77,7 +81,7 @@ public:
 		bool duplicate;
 		bool retain;
 
-		std::variant<ConnectHeader, ConnackHeader, PublishHeader, SubscribeHeader, SubackHeader> content;
+		std::variant<ConnectHeader, ConnackHeader, PublishHeader, SubscribeHeader, SubackHeader, UnsubscribeHeader> content;
 	};
 
 	static auto toString(Type type) -> std::string_view;
@@ -90,6 +94,7 @@ private:
 	static auto decodeConnect(BytesView bytes) -> std::tuple<ConnectHeader, Error>;
 	static auto decodePublish(BytesView bytes, QosLevel level) -> std::tuple<PublishHeader, Error>;
 	static auto decodeSubscribe(BytesView bytes) -> std::tuple<SubscribeHeader, Error>;
+	static auto decodeUnsubscribe(BytesView bytes) -> std::tuple<UnsubscribeHeader, Error>;
 
 	struct HeaderRepresentation {
 	private:

@@ -31,7 +31,6 @@ auto Mqtt::toString(Type type) -> std::string_view {
 		case Disconnect:
 			return "Disconnect";
 	}
-	std::cerr << type << '\n';
 	return "Unrecognized";
 }
 
@@ -81,7 +80,10 @@ auto Mqtt::decode(UnixTcpSocket client) -> std::tuple<Message, Error> {
 
 	// accumulate length
 	size_t remainingLength = 0;
-	for(int i = 0; i < 4; i++) {
+	size_t multiplier = 1;
+	Byte byte = 0;
+
+	do {
 		std::tie(bytes, err) = client.read(sizeof(Byte));
 		if(err) {
 			return {
@@ -89,12 +91,17 @@ auto Mqtt::decode(UnixTcpSocket client) -> std::tuple<Message, Error> {
 				err,
 			};
 		}
-		uint8_t byte = bytes[0];
-		remainingLength += byte & 0b11111110;
-		if((remainingLength & 0b00000001) == 0) {
-			break;
+
+		byte = bytes[0];
+		remainingLength += (byte & 127) * multiplier;
+		multiplier *= 128;
+		if(multiplier > 128 * 128 * 128) {
+			return {
+				message,
+				"Error decoding length",
+			};
 		}
-	}
+	} while((byte & 128) != 0);
 
 	std::tie(bytes, err) = client.read(remainingLength);
 	if(err) {
@@ -168,10 +175,15 @@ auto Mqtt::encode(const Mqtt::Message& message) -> Bytes {
 	Bytes bytes;
 
 	size_t finalSize = sizeof(HeaderRepresentation);
-	if(std::get_if<Mqtt::ConnackHeader>(&message.content)) {
+	if(message.type == Mqtt::Pingresp) {
+		finalSize += 1;
+	} else if(std::get_if<Mqtt::ConnackHeader>(&message.content)) {
 		finalSize += 1 + 2;
 	} else if(std::get_if<Mqtt::SubackHeader>(&message.content)) {
 		finalSize += 2 + 1;
+	} else if(auto content = std::get_if<Mqtt::PublishHeader>(&message.content); content) {
+		finalSize += 4 + 2 + 2 + content->payload.size() 
+			+ content->topic.size() + 2;
 	} else {
 		validate("Unknown message type");
 	}
@@ -181,13 +193,34 @@ auto Mqtt::encode(const Mqtt::Message& message) -> Bytes {
 	auto header = HeaderRepresentation::fromMessage(message);
 	bytes.insert(bytes.end(), header.data);
 
-	if(auto connack = std::get_if<Mqtt::ConnackHeader>(&message.content); connack) {
+	if(message.type == Mqtt::Pingresp) {
+		bytes.insert(bytes.end(), 0);
+	} else if(auto connack = std::get_if<Mqtt::ConnackHeader>(&message.content); connack) {
 		bytes.insert(bytes.end(), {2, 0});
 		bytes.insert(bytes.end(), connack->code);
 	} else if(auto suback = std::get_if<Mqtt::SubackHeader>(&message.content); suback) {
+		bytes.insert(bytes.end(), 2 + suback->payload.size());
 		auto idBytes = AsBigEndianBytes(suback->id);
 		bytes.insert(bytes.end(), idBytes.begin(), idBytes.end());
-		bytes.insert(bytes.end(), suback->payload);
+		bytes.insert(bytes.end(), suback->payload.begin(), suback->payload.end());
+	} else if(auto publish = std::get_if<Mqtt::PublishHeader>(&message.content); publish) {
+		uint16_t topicLength = publish->topic.size();
+		uint16_t payloadLength = publish->payload.size();
+		uint32_t totalLength = topicLength + payloadLength + 2;
+
+		do {
+			Byte byte = totalLength % 128;
+			totalLength /= 128;
+			if(totalLength > 0) {
+				totalLength |= 128;
+			}
+			bytes.insert(bytes.end(), byte);
+		} while(totalLength > 0);
+
+		auto topicLengthBytes = AsBigEndianBytes(topicLength);
+		bytes.insert(bytes.end(), topicLengthBytes.begin(), topicLengthBytes.end());
+		bytes.insert(bytes.end(), publish->topic.begin(), publish->topic.end());
+		bytes.insert(bytes.end(), publish->payload.begin(), publish->payload.end());
 	}
 
 	return bytes;
@@ -388,7 +421,6 @@ auto Mqtt::decodeSubscribe(BytesView bytes) -> std::tuple<SubscribeHeader, Error
 		offset += 2;
 
 		if(bytes.size() < offset + topicLength) {
-			std::cerr << bytes.size() << ' ' << (offset + topicLength) << '\n';
 			return {
 				header,
 				"Bytes not enough to fit topic",
@@ -400,7 +432,7 @@ auto Mqtt::decodeSubscribe(BytesView bytes) -> std::tuple<SubscribeHeader, Error
 
 		offset += topicLength;
 
-		if(bytes.size() < offset + 1) {
+		if(bytes.size() <= offset) {
 			return {
 				header,
 				"Bytes not enough to fit QoS level",
@@ -412,6 +444,69 @@ auto Mqtt::decodeSubscribe(BytesView bytes) -> std::tuple<SubscribeHeader, Error
 
 		header.topics.push_back(topic);
 		header.levels.push_back(static_cast<QosLevel>(level));
+	}
+
+	return {
+		header,
+		nullptr,
+	};
+}
+
+auto Mqtt::decodeUnsubscribe(BytesView bytes) -> std::tuple<Mqtt::UnsubscribeHeader, Error> {
+	UnsubscribeHeader header;
+	std::string topic;
+	size_t offset = 0;
+
+	if(bytes.size() < 2) {
+		return {
+			header,
+			"Bytes not enough to fit id",
+		};
+	}
+
+	auto idBytes = BytesView(bytes.begin(), bytes.begin() + 2);
+	auto [id, err] = fromBigEndianBytes<uint16_t>(idBytes);
+	if(err) {
+		return {
+			header,
+			err,
+		};
+	}
+
+	offset += 2;
+	header.id = id;
+
+	while(offset < bytes.size()) {
+		if(bytes.size() < offset + 2) {
+			return {
+				header,
+				"Bytes not enough to fit topic length",
+			};
+		}
+
+		auto topicLengthBytes = BytesView(bytes.begin() + offset, bytes.begin() + offset + 2);
+		auto [topicLength, topicLengthErr] = fromBigEndianBytes<uint16_t>(topicLengthBytes);
+
+		if(topicLengthErr) {
+			return {
+				header,
+				topicLengthErr,
+			};
+		}
+
+		offset += 2;
+
+		if(bytes.size() < offset + topicLength) {
+			return {
+				header,
+				"Bytes not enough to fit topic",
+			};
+		}
+
+		topic.resize(topicLength);
+		std::copy(bytes.begin() + offset, bytes.begin() + offset + topicLength, topic.begin());
+		header.topics.push_back(topic);
+		offset += topicLength;
 	}
 
 	return {

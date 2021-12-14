@@ -56,8 +56,6 @@ auto MqttBroker::handleClient(UnixTcpSocket client) -> void {
 			response.content = Mqtt::ConnackHeader{
 				.code = 0x00,
 			};
-
-			clients.emplace_back(client);
 		}
 
 		auto bytes = Mqtt::encode(response);
@@ -68,6 +66,20 @@ auto MqttBroker::handleClient(UnixTcpSocket client) -> void {
 	};
 
 	while(true) {
+		/*
+		auto [bytes, _] = client.read(400);
+		auto blank = {0, 0};
+		auto end = std::search(bytes.begin(), bytes.end(), blank.begin(), blank.end());
+		for(auto it = bytes.begin(); it != end; it++) {
+			if(std::isprint(*it)) {
+				std::cerr << *it << ' ';
+			} else {
+				std::cerr << std::hex << (int)*it << ' ';
+			}
+		}
+		std::cerr << '\n';
+		*/
+
 		std::tie(message, error) = Mqtt::decode(client);
 		if(error) {
 			std::cerr << "Message decoding failed: " << error << '\n';
@@ -76,48 +88,162 @@ auto MqttBroker::handleClient(UnixTcpSocket client) -> void {
 
 		std::cout << message << '\n';
 
-		if(message.type == Mqtt::Type::Subscribe) {
-			handleSubscription(client, message);
-		} else if(message.type == Mqtt::Publish) {
-			//TODO:
+		switch(message.type) {
+			case Mqtt::Type::Subscribe:
+				handleSubscription(client, message);
+				break;
+			case Mqtt::Publish:
+				handlePublish(message);
+				break;
+			case Mqtt::Unsubscribe:
+				handleUnsubscribe(client, message);
+				break;
+			case Mqtt::Pingreq:
+				handlePingreq(client);
+				break;
+			case Mqtt::Disconnect:
+				handleDisconnect(client);
+				return;
+			default:
+				std::cerr << "Unsupported...\n";
+				break;
 		}
+
+		/*
+		auto [bytes, _] = client.read(400);
+		auto blank = {0, 0};
+		auto end = std::search(bytes.begin(), bytes.end(), blank.begin(), blank.end());
+		for(auto it = bytes.begin(); it != end; it++) {
+			if(std::isprint(*it)) {
+				std::cerr << *it << ' ';
+			} else {
+				std::cerr << std::hex << (int)*it << ' ';
+			}
+		}
+		std::cerr << '\n';
+		*/
 	}
 }
 
 auto MqttBroker::handleSubscription(UnixTcpSocket client, const Mqtt::Message& message) -> void {
 	auto sub = std::get_if<Mqtt::SubscribeHeader>(&message.content);
-	uint8_t payload = 0x00;
-	auto info = std::find_if(clients.begin(), clients.end(), [&](const ClientInfo& info) {
-		return info.socket == client;
-	});
+	Mqtt::SubackHeader suback = {
+		.id = sub->id,
+	};
+	suback.payload.resize(sub->levels.size(), 0x00);
+
+	clientsMutex.lock();
 
 	if(sub == nullptr) {
+		clientsMutex.unlock();
 		return;
 	}
 
-	if(info == clients.end()) {
-		payload = 0x80;
-	} else {
-		info->subscriptions.reserve(sub->topics.size());
-		for(size_t i = 0; i < sub->topics.size(); i++) {
-			info->subscriptions.emplace_back(
-					sub->topics[i],
-					sub->levels[i]
-				);
-		}
+	for(size_t i = 0; i < sub->topics.size(); i++) {
+		subscriptions[sub->topics[i]].insert({
+			.socket = client,
+			.level = sub->levels[i],
+		});
 	}
+
+	clientsMutex.unlock();
 
 	Mqtt::Message response = {
 		.type = Mqtt::Suback,
 		.level = Mqtt::Lv0,
 		.duplicate = false,
 		.retain = false,
-		.content = Mqtt::SubackHeader {
-			.id = sub->id,
-			.payload = payload,
-		},
+		.content = suback,
 	};
 
 	auto bytes = Mqtt::encode(response);
-	client.write(bytes);
+	auto [_, err] = client.write(bytes);
+	if(err) {
+		std::cerr << err << '\n';
+	}
+}
+
+auto MqttBroker::handlePublish(const Mqtt::Message& message) -> void {
+	auto publish = std::get_if<Mqtt::PublishHeader>(&message.content);
+	if(publish == nullptr) {
+		return;
+	}
+
+	auto bytes = Mqtt::encode(message);
+	auto doPublish = [&](const std::set<Subscription>& set) {
+		for(const auto& sub : set) {
+			auto [_, err] = sub.socket.write(bytes);
+			if(err) {
+				std::cerr << err << '\n';
+			}
+		}
+	};
+
+	clientsMutex.lock();
+
+	auto& subscribers = subscriptions[publish->topic];
+	doPublish(subscribers);
+	subscribers = subscriptions["#"];
+	doPublish(subscribers);
+
+	clientsMutex.unlock();
+}
+
+auto MqttBroker::handleUnsubscribe(UnixTcpSocket client, const Mqtt::Message& message) -> void {
+	auto unsub = std::get_if<Mqtt::UnsubscribeHeader>(&message.content);
+	if(unsub == nullptr) {
+		return;
+	}
+
+	clientsMutex.lock();
+
+	for(const auto& topic : unsub->topics) {
+		auto it = subscriptions.find(topic);
+		if(it != subscriptions.end()) {
+			if(it->second.contains({client})) {
+				it->second.erase({client});
+			}
+		}
+	}
+
+	clientsMutex.unlock();
+}
+
+auto MqttBroker::handlePingreq(UnixTcpSocket client) -> void {
+	Mqtt::Message response = {
+		.type = Mqtt::Pingresp,
+		.level = Mqtt::Lv0,
+		.duplicate = false,
+		.retain = false,
+		.content = {},
+	};
+
+	auto bytes = Mqtt::encode(response);
+	auto [_, err] = client.write(bytes);
+	if(err) {
+		std::cerr << "Ping error: " << err << '\n';
+	}
+}
+
+auto MqttBroker::Subscription::operator<(const Subscription& other) const -> bool {
+	return socket < other.socket;
+}
+
+auto MqttBroker::Subscription::operator==(const Subscription& other) const -> bool {
+	return socket == other.socket;
+}
+
+auto MqttBroker::handleDisconnect(UnixTcpSocket client) -> void {
+	unsubscribeClient(client);
+	client.close();
+}
+
+auto MqttBroker::unsubscribeClient(UnixTcpSocket client) -> void {
+	clientsMutex.lock();
+	for(auto& pair : subscriptions) {
+		if(pair.second.contains({client})) {
+			pair.second.erase({client});
+		}
+	}
+	clientsMutex.unlock();
 }

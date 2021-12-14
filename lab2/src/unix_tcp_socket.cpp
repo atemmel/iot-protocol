@@ -29,6 +29,10 @@ auto UnixTcpSocket::operator==(UnixTcpSocket other) const -> bool {
 	return fd == other.fd;
 }
 
+auto UnixTcpSocket::operator<(UnixTcpSocket other) const -> bool {
+	return fd < other.fd;
+}
+
 auto UnixTcpSocket::connect(std::string_view address, uint16_t port) -> Error {
 	sockaddr_in hint;
 	hint.sin_family = AF_INET;
@@ -102,7 +106,7 @@ auto UnixTcpSocket::accept() -> std::tuple<UnixTcpSocket, Error> {
 	};
 }
 
-auto UnixTcpSocket::read(size_t howManyBytes) -> std::tuple<Bytes, Error> {
+auto UnixTcpSocket::read(size_t howManyBytes) const -> std::tuple<Bytes, Error> {
 	Bytes bytes(howManyBytes);
 	auto result = ::read(fd, bytes.data(), bytes.size());
 	if(result < 0) {
@@ -117,7 +121,7 @@ auto UnixTcpSocket::read(size_t howManyBytes) -> std::tuple<Bytes, Error> {
 	};
 }
 
-auto UnixTcpSocket::readUntil(Byte thisByte) -> std::tuple<Bytes, Error> {
+auto UnixTcpSocket::readUntil(Byte thisByte) const -> std::tuple<Bytes, Error> {
 	Bytes bytes;
 	bytes.reserve(64);
 
@@ -142,7 +146,7 @@ auto UnixTcpSocket::readUntil(Byte thisByte) -> std::tuple<Bytes, Error> {
 	}
 }
 
-auto UnixTcpSocket::write(const BytesView bytes) -> std::tuple<size_t, Error> {
+auto UnixTcpSocket::write(const BytesView bytes) const -> std::tuple<size_t, Error> {
 	auto result = ::write(fd, bytes.data(), bytes.size());
 	if(result < 0) {
 		return {
@@ -154,4 +158,8 @@ auto UnixTcpSocket::write(const BytesView bytes) -> std::tuple<size_t, Error> {
 		result,
 		nullptr,
 	};
+}
+
+auto UnixTcpSocket::close() -> void {
+	::close(fd);
 }
