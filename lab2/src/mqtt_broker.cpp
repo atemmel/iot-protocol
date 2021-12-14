@@ -66,19 +66,6 @@ auto MqttBroker::handleClient(UnixTcpSocket client) -> void {
 	};
 
 	while(true) {
-		/*
-		auto [bytes, _] = client.read(400);
-		auto blank = {0, 0};
-		auto end = std::search(bytes.begin(), bytes.end(), blank.begin(), blank.end());
-		for(auto it = bytes.begin(); it != end; it++) {
-			if(std::isprint(*it)) {
-				std::cerr << *it << ' ';
-			} else {
-				std::cerr << std::hex << (int)*it << ' ';
-			}
-		}
-		std::cerr << '\n';
-		*/
 
 		std::tie(message, error) = Mqtt::decode(client);
 		if(error) {
@@ -108,20 +95,6 @@ auto MqttBroker::handleClient(UnixTcpSocket client) -> void {
 				std::cerr << "Unsupported...\n";
 				break;
 		}
-
-		/*
-		auto [bytes, _] = client.read(400);
-		auto blank = {0, 0};
-		auto end = std::search(bytes.begin(), bytes.end(), blank.begin(), blank.end());
-		for(auto it = bytes.begin(); it != end; it++) {
-			if(std::isprint(*it)) {
-				std::cerr << *it << ' ';
-			} else {
-				std::cerr << std::hex << (int)*it << ' ';
-			}
-		}
-		std::cerr << '\n';
-		*/
 	}
 }
 

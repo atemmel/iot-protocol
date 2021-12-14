@@ -27,14 +27,6 @@ private:
 		auto operator==(const Subscription& other) const -> bool;
 	};
 
-	/*
-	struct ClientInfo {
-		UnixTcpSocket socket;
-		std::vector<Subscription> subscriptions;
-	};
-	*/
-	
-	//std::vector<ClientInfo> clients;
 	std::unordered_map<std::string, std::set<Subscription>> subscriptions;
 	std::mutex clientsMutex;
 };
