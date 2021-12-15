@@ -25,7 +25,7 @@ auto MqttBroker::serve() -> void {
 }
 
 auto MqttBroker::handleClient(UnixTcpSocket client) -> void {
-	auto [message, error] = Mqtt::decode(client);
+	auto [message, messageBytes, error] = Mqtt::decode(client);
 	if(error) {
 		std::cerr << error << '\n';
 		return;
@@ -67,7 +67,7 @@ auto MqttBroker::handleClient(UnixTcpSocket client) -> void {
 
 	while(true) {
 
-		std::tie(message, error) = Mqtt::decode(client);
+		std::tie(message, messageBytes, error) = Mqtt::decode(client);
 		if(error) {
 			std::cerr << "Message decoding failed: " << error << '\n';
 			continue;
@@ -80,7 +80,7 @@ auto MqttBroker::handleClient(UnixTcpSocket client) -> void {
 				handleSubscription(client, message);
 				break;
 			case Mqtt::Publish:
-				handlePublish(message);
+				handlePublish(message, messageBytes);
 				break;
 			case Mqtt::Unsubscribe:
 				handleUnsubscribe(client, message);
@@ -93,7 +93,8 @@ auto MqttBroker::handleClient(UnixTcpSocket client) -> void {
 				return;
 			default:
 				std::cerr << "Unsupported...\n";
-				break;
+				client.close();
+				return;
 		}
 	}
 }
@@ -134,12 +135,31 @@ auto MqttBroker::handleSubscription(UnixTcpSocket client, const Mqtt::Message& m
 	if(err) {
 		std::cerr << err << '\n';
 	}
+
+	retainMutex.lock();
+	for(const auto& topic : sub->topics) {
+		if(topic == "#") {
+			for(const auto& pair : retain) {
+				client.write(pair.second);
+			}
+			break;
+		} else {
+			client.write(retain[topic]);
+		}
+	}
+	retainMutex.unlock();
 }
 
-auto MqttBroker::handlePublish(const Mqtt::Message& message) -> void {
+auto MqttBroker::handlePublish(const Mqtt::Message& message, const Bytes& messageBytes) -> void {
 	auto publish = std::get_if<Mqtt::PublishHeader>(&message.content);
 	if(publish == nullptr) {
 		return;
+	}
+
+	if(message.retain) {
+		retainMutex.lock();
+		retain.emplace(publish->topic, messageBytes);
+		retainMutex.unlock();
 	}
 
 	auto bytes = Mqtt::encode(message);

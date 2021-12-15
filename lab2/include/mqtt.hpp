@@ -87,7 +87,7 @@ public:
 	static auto toString(Type type) -> std::string_view;
 	static auto toString(QosLevel level) -> std::string_view;
 
-	static auto decode(UnixTcpSocket client) -> std::tuple<Message, Error>;
+	static auto decode(UnixTcpSocket client) -> std::tuple<Message, Bytes, Error>;
 	static auto encode(const Mqtt::Message& message) -> Bytes;
 
 private:

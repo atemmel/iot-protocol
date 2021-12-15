@@ -46,20 +46,25 @@ auto Mqtt::toString(QosLevel level) -> std::string_view {
 	return "Unrecognized";
 }
 
-auto Mqtt::decode(UnixTcpSocket client) -> std::tuple<Message, Error> {
+auto Mqtt::decode(UnixTcpSocket client) -> std::tuple<Message, Bytes, Error> {
 	Message message;
+	Bytes bytesResult;
 
 	auto [bytes, err] = client.read(sizeof(HeaderRepresentation));
 	if(err) {
 		return {
 			message,
+			{},
 			err,
 		};
 	}
 
+	bytesResult.insert(bytesResult.end(), bytes.begin(), bytes.end());
+
 	if(bytes.size() < sizeof(HeaderRepresentation)) {
 		return {
 			message, 
+			{},
 			"Bytes did not contain a header",
 		};
 	}
@@ -69,6 +74,7 @@ auto Mqtt::decode(UnixTcpSocket client) -> std::tuple<Message, Error> {
 	if(convErr) {
 		return {
 			message,
+			{},
 			convErr,
 		};
 	}
@@ -88,16 +94,19 @@ auto Mqtt::decode(UnixTcpSocket client) -> std::tuple<Message, Error> {
 		if(err) {
 			return {
 				message,
+				{},
 				err,
 			};
 		}
 
 		byte = bytes[0];
+		bytesResult.insert(bytesResult.end(), byte);
 		remainingLength += (byte & 127) * multiplier;
 		multiplier *= 128;
 		if(multiplier > 128 * 128 * 128) {
 			return {
 				message,
+				{},
 				"Error decoding length",
 			};
 		}
@@ -107,11 +116,13 @@ auto Mqtt::decode(UnixTcpSocket client) -> std::tuple<Message, Error> {
 	if(err) {
 		return {
 			message,
+			{},
 			err,
 		};
 	}
 
 	BytesView remainder(bytes);
+	bytesResult.insert(bytesResult.end(), remainder.begin(), remainder.end());
 	
 	switch(message.type) {
 		case Connect:
@@ -119,6 +130,7 @@ auto Mqtt::decode(UnixTcpSocket client) -> std::tuple<Message, Error> {
 			if(err) {
 				return {
 					message,
+					{},
 					err,
 				};
 			}
@@ -130,6 +142,7 @@ auto Mqtt::decode(UnixTcpSocket client) -> std::tuple<Message, Error> {
 			if(err) {
 				return {
 					message,
+					{},
 					err,
 				};
 			}
@@ -147,6 +160,7 @@ auto Mqtt::decode(UnixTcpSocket client) -> std::tuple<Message, Error> {
 			if(err) {
 				return {
 					message,
+					{},
 					err,
 				};
 			}
@@ -167,6 +181,7 @@ auto Mqtt::decode(UnixTcpSocket client) -> std::tuple<Message, Error> {
 
 	return {
 		message,
+		bytesResult,
 		nullptr,
 	};
 }
@@ -343,12 +358,10 @@ auto Mqtt::decodePublish(BytesView bytes, QosLevel level) -> std::tuple<PublishH
 	
 	size_t offset = 2 + varHeaderLength;
 	
-	if(bytes.size() < offset + 1) {
+	if(bytes.size() < offset + 1 && level != QosLevel::Lv0) {
 		return {
 			header,
-			level == QosLevel::Lv0 
-				? "Bytes not long enough to fit topic name" 
-				: "Bytes not long enough to fit QoS level",
+			"Bytes not long enough to fit QoS level",
 		};
 	}
 
