@@ -174,10 +174,14 @@ auto MqttBroker::handlePublish(const Mqtt::Message& message, const Bytes& messag
 
 	clientsMutex.lock();
 
-	auto& subscribers = subscriptions[publish->topic];
-	doPublish(subscribers);
-	subscribers = subscriptions["#"];
-	doPublish(subscribers);
+	{
+		auto& subscribers = subscriptions[publish->topic];
+		doPublish(subscribers);
+	}
+	{
+		auto& subscribers = subscriptions["#"];
+		doPublish(subscribers);
+	}
 
 	clientsMutex.unlock();
 }
