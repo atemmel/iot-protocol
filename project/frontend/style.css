@@ -1,0 +1,16 @@
+.graph {
+	border: 1px solid black;
+	padding: 0px;
+	margin: 0px;
+}
+
+.graph-border {
+	display: inline-block;
+	padding: 0px;
+	margin: 0px;
+}
+
+.content {
+	margin: 0 auto;
+	width: 400px;
+}

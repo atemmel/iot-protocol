@@ -1,9 +1,24 @@
 <!DOCTYPE HTML>
 <html>
 	<head>
+		<meta charset="UTF-8">
+		<link rel="stylesheet" href="style.css">
 	</head>
 	<body>
-		<canvas id="graph" width="800" height="600"></canvas>
+		<div class="content">
+			<div class="graph-border">
+			<div>Cpu:</div>
+			<canvas class="graph" id="cpu-graph" width="400" height="200"></canvas>
+			</div>
+			<div class="graph-border">
+			<div>Memory:</div>
+			<canvas class="graph" id="mem-graph" width="400" height="200"></canvas>
+			</div>
+			<div class="graph-border">
+			<div>Round-trip-time:</div>
+			<canvas class="graph" id="rtt-graph" width="400" height="200"></canvas>
+			</div>
+		</div>
 		<script src="script.js"></script>
 	</body>
 </html>
