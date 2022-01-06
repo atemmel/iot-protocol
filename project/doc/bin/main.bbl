@@ -1,0 +1,176 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.1 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{none/global//global/global}
+    \entry{mooreslaw}{article}{}
+      \name{author}{1}{}{%
+        {{hash=a255a2fb9a29fa4fcefff49cef9b78bd}{%
+           family={Moore},
+           familyi={M\bibinitperiod},
+           given={Gordon\bibnamedelima E.},
+           giveni={G\bibinitperiod\bibinitdelim E\bibinitperiod}}}%
+      }
+      \strng{namehash}{a255a2fb9a29fa4fcefff49cef9b78bd}
+      \strng{fullhash}{a255a2fb9a29fa4fcefff49cef9b78bd}
+      \strng{bibnamehash}{a255a2fb9a29fa4fcefff49cef9b78bd}
+      \strng{authorbibnamehash}{a255a2fb9a29fa4fcefff49cef9b78bd}
+      \strng{authornamehash}{a255a2fb9a29fa4fcefff49cef9b78bd}
+      \strng{authorfullhash}{a255a2fb9a29fa4fcefff49cef9b78bd}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{day}{19}
+      \field{journaltitle}{Electronics Magazine}
+      \field{month}{4}
+      \field{title}{Cramming more components onto integrated circuits}
+      \field{year}{1965}
+      \field{dateera}{ce}
+    \endentry
+    \entry{iotreview}{article}{}
+      \name{author}{3}{}{%
+        {{hash=67138fbacbfd500e7264aa0ad653203b}{%
+           family={S.},
+           familyi={S\bibinitperiod},
+           given={Madakam},
+           giveni={M\bibinitperiod}}}%
+        {{hash=4ed34ccbb6d1de08781e0ea9f226b413}{%
+           family={Ramasway},
+           familyi={R\bibinitperiod},
+           given={R.},
+           giveni={R\bibinitperiod}}}%
+        {{hash=5c61dd0683a4b364981033449be038d3}{%
+           family={S.},
+           familyi={S\bibinitperiod},
+           given={Tripathi},
+           giveni={T\bibinitperiod}}}%
+      }
+      \strng{namehash}{8f35100c2ab7c4a29cdb89e921d5a242}
+      \strng{fullhash}{8f35100c2ab7c4a29cdb89e921d5a242}
+      \strng{bibnamehash}{8f35100c2ab7c4a29cdb89e921d5a242}
+      \strng{authorbibnamehash}{8f35100c2ab7c4a29cdb89e921d5a242}
+      \strng{authornamehash}{8f35100c2ab7c4a29cdb89e921d5a242}
+      \strng{authorfullhash}{8f35100c2ab7c4a29cdb89e921d5a242}
+      \field{sortinit}{2}
+      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Computer and Communications}
+      \field{title}{Internet of Things (IoT): A Literature Review}
+      \field{year}{2015}
+      \field{dateera}{ce}
+    \endentry
+    \entry{coap}{online}{}
+      \field{sortinit}{3}
+      \field{sortinithash}{ad6fe7482ffbd7b9f99c9e8b5dccd3d7}
+      \field{labeltitlesource}{title}
+      \field{title}{CoAP Homepage}
+      \field{urlday}{6}
+      \field{urlmonth}{1}
+      \field{urlyear}{2022}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb http://coap.technology/
+      \endverb
+      \verb{url}
+      \verb http://coap.technology/
+      \endverb
+    \endentry
+    \entry{mqtt}{online}{}
+      \field{sortinit}{4}
+      \field{sortinithash}{9381316451d1b9788675a07e972a12a7}
+      \field{labeltitlesource}{title}
+      \field{title}{Mqtt Homepage}
+      \field{urlday}{6}
+      \field{urlmonth}{1}
+      \field{urlyear}{2022}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://mqtt.org/
+      \endverb
+      \verb{url}
+      \verb https://mqtt.org/
+      \endverb
+    \endentry
+    \entry{tcp}{article}{}
+      \name{author}{2}{}{%
+        {{hash=b026038a8949531beb879f1f1f634c06}{%
+           family={Cerf},
+           familyi={C\bibinitperiod},
+           given={Vinton\bibnamedelima G.},
+           giveni={V\bibinitperiod\bibinitdelim G\bibinitperiod}}}%
+        {{hash=3c6132609a577a18001eabb4bb1ad87e}{%
+           family={Kahn},
+           familyi={K\bibinitperiod},
+           given={Robert\bibnamedelima E.},
+           giveni={R\bibinitperiod\bibinitdelim E\bibinitperiod}}}%
+      }
+      \strng{namehash}{a5205c33c591dcd2d98d4f51ae5ca575}
+      \strng{fullhash}{a5205c33c591dcd2d98d4f51ae5ca575}
+      \strng{bibnamehash}{a5205c33c591dcd2d98d4f51ae5ca575}
+      \strng{authorbibnamehash}{a5205c33c591dcd2d98d4f51ae5ca575}
+      \strng{authornamehash}{a5205c33c591dcd2d98d4f51ae5ca575}
+      \strng{authorfullhash}{a5205c33c591dcd2d98d4f51ae5ca575}
+      \field{sortinit}{5}
+      \field{sortinithash}{20e9b4b0b173788c5dace24730f47d8c}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{IEEE Transactions on Communications}
+      \field{month}{5}
+      \field{title}{A Protocol for Packet Network Intercommunication}
+      \field{year}{1974}
+      \field{dateera}{ce}
+    \endentry
+    \entry{udp}{online}{}
+      \field{sortinit}{6}
+      \field{sortinithash}{b33bc299efb3c36abec520a4c896a66d}
+      \field{labeltitlesource}{title}
+      \field{title}{User Datagram Protocol}
+      \field{urlday}{6}
+      \field{urlmonth}{1}
+      \field{urlyear}{2022}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://www.ipv6.com/general/udp-user-datagram-protocol/
+      \endverb
+      \verb{url}
+      \verb https://www.ipv6.com/general/udp-user-datagram-protocol/
+      \endverb
+    \endentry
+    \entry{websocket}{online}{}
+      \field{sortinit}{9}
+      \field{sortinithash}{0a5ebc79d83c96b6579069544c73c7d4}
+      \field{labeltitlesource}{title}
+      \field{title}{The WebSocket Protocol draft}
+      \field{urlday}{6}
+      \field{urlmonth}{1}
+      \field{urlyear}{2022}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://datatracker.ietf.org/doc/html/rfc6455
+      \endverb
+      \verb{url}
+      \verb https://datatracker.ietf.org/doc/html/rfc6455
+      \endverb
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+
