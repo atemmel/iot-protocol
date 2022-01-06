@@ -35,6 +35,7 @@ socket.addEventListener('open', function (event) {
 // Listen for messages
 socket.addEventListener('message', function (event) {
 	const data = JSON.parse(event.data);
+	console.log(data);
 	updateCanvas(data)
 });
 
@@ -60,8 +61,9 @@ function updateCanvas(data) {
 		const c1 = standardize(canvases.cpu.height, 100.0, curr.cpu);
 		const m0 = standardize(canvases.mem.height, 100.0, prev.mem);
 		const m1 = standardize(canvases.mem.height, 100.0, curr.mem);
-		const r0 = standardize(canvases.rtt.height, 100.0, prev.rtt);
-		const r1 = standardize(canvases.rtt.height, 100.0, curr.rtt);
+
+		const r0 = -(prev.rtt) + (canvases.rtt.height / 2);
+		const r1 = -(curr.rtt) + (canvases.rtt.height / 2);
 
 		ctx.cpu.beginPath();
 		ctx.cpu.moveTo((i - 1) * scale, c0);

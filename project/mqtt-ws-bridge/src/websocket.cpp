@@ -148,7 +148,8 @@ auto ws::Server::listenThread() -> void {
 		if(client.fail()) {
 			std::cerr << client.reason() << '\n';
 		} else {
-			handleClient(client.value);
+			auto thread = std::thread(&ws::Server::handleClient, this, client.value);
+			thread.detach();
 		}
 	}
 }
