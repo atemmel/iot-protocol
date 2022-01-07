@@ -1,0 +1,8 @@
+*.aux
+*.blg
+*.log
+*.toc
+bin/*.aux
+bin/*.blg
+bin/*.log
+bin/*.toc
