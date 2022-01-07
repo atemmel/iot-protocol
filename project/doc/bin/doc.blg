@@ -1,5 +1,0 @@
-[0] Config.pm:312> INFO - This is Biber 2.15
-[0] Config.pm:315> INFO - Logfile is 'bin/doc.blg'
-[80] biber:330> INFO - === Thu Jan  6, 2022, 19:21:47
-[177] Utils.pm:411> ERROR - Cannot find 'bin/doc.bcf'!
-[177] Biber.pm:132> INFO - ERRORS: 1

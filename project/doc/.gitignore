@@ -6,3 +6,6 @@ bin/*.aux
 bin/*.blg
 bin/*.log
 bin/*.toc
+bin/*.bbl
+bin/*.xml
+bin/appendices/*.aux
