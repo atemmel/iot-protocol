@@ -2,10 +2,14 @@
 *.blg
 *.log
 *.toc
+*.bbl
+*.xml
+*.out
 bin/*.aux
 bin/*.blg
 bin/*.log
 bin/*.toc
 bin/*.bbl
 bin/*.xml
+bin/*.out
 bin/appendices/*.aux
