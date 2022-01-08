@@ -2351,11 +2351,27 @@
     <bcf:citekey order="2">iotreview</bcf:citekey>
     <bcf:citekey order="3">coap</bcf:citekey>
     <bcf:citekey order="4">mqtt</bcf:citekey>
-    <bcf:citekey order="5">tcp</bcf:citekey>
-    <bcf:citekey order="6">udp</bcf:citekey>
-    <bcf:citekey order="7">mqtt</bcf:citekey>
-    <bcf:citekey order="8">coap</bcf:citekey>
-    <bcf:citekey order="9">websocket</bcf:citekey>
+    <bcf:citekey order="5">libcoap</bcf:citekey>
+    <bcf:citekey order="6">mqttcpp</bcf:citekey>
+    <bcf:citekey order="7">openssl</bcf:citekey>
+    <bcf:citekey order="8">tcp</bcf:citekey>
+    <bcf:citekey order="9">udp</bcf:citekey>
+    <bcf:citekey order="10">mqtt</bcf:citekey>
+    <bcf:citekey order="11">coap</bcf:citekey>
+    <bcf:citekey order="12">websocket</bcf:citekey>
+    <bcf:citekey order="13">ws-howto</bcf:citekey>
+    <bcf:citekey order="14">ws-howto</bcf:citekey>
+    <bcf:citekey order="15">ws-howto</bcf:citekey>
+    <bcf:citekey order="16">ws-howto</bcf:citekey>
+    <bcf:citekey order="17">ws-howto</bcf:citekey>
+    <bcf:citekey order="18">ws-howto</bcf:citekey>
+    <bcf:citekey order="19">ws-howto</bcf:citekey>
+    <bcf:citekey order="20">ws-howto</bcf:citekey>
+    <bcf:citekey order="21">ws-howto</bcf:citekey>
+    <bcf:citekey order="22">ws-howto</bcf:citekey>
+    <bcf:citekey order="23">ws-howto</bcf:citekey>
+    <bcf:citekey order="24">ws-howto</bcf:citekey>
+    <bcf:citekey order="25">ws-howto</bcf:citekey>
   </bcf:section>
   <!-- SORTING TEMPLATES -->
   <bcf:sortingtemplate name="none">

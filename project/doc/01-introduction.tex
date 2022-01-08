@@ -71,12 +71,15 @@ Examples: “The study has its focus on…. In the survey, the effect of paramet
 
 \subsection{Outline}
 \label{ch:intro:outline}
-Skriv det här din pajas!
-
-Briefly describe the report's outline. “Chapter 2 describes…”
+Chapter 1 presents a basic introduction to the project as well as some background information. Chapter 2 describes some underlying theory regarding the different communication protocols used. Chapter 3 describes an overarching vision of the system that the project aims to design. In chapter 4, details regarding the individual components and their purposes are presented, including a brief introduction to the WebSocket protocol. Chapter 5 showcases the resulting frontend that the project produces as well as some round-trip-time measurements. Chapter 6 presents some general discussions regarding the project, including ethical discussions and a few suggestions for future work.
 
 \subsection{Contributions}
 \label{ch:intro:contributions}
-Skriv det här din pajas!
 
-Describe which parts of the work that you have conducted yourself, and which parts that you had help with i.e. carried out by colleagues. If the work is carried out in a group the report should then explain how the tasks were divided between authors. All co-authors should be credited in the work as a whole.
+Certain components of different protocols required some external libraries to finalize. These are as follows:
+
+\begin{itemize}
+	\item libcoap\cite{libcoap} - For creating a CoAP server.
+	\item mqtt\_cpp\cite{mqttcpp} - For creating different MQTT clients.
+	\item openssl\cite{openssl} - For computing the SHA-1 hash.
+\end{itemize}

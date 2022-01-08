@@ -1,6 +1,10 @@
-\section{Conclusions / Discussion}
+\section{Discussion}
 \label{ch:concl}
 \noindent	
+
+This project indeed shows that creating a system consisting of several components using different protocols is completely doable. In doing so, the first goal of the project is fulfilled. Likewise, the CoAP client, the MQTT broker and the WebSocket server were all implemented for use within the project, whereas the CoAP server and the MQTT client code were pulled in as external dependencies, meaning that the second goal was also fulfilled. All of these connections could operate with each other as planned, resulting in the fulfillment of the third goal. The fourth goal was also achieved, as could be seen in \textit{chapter~\ref{ch:results}}. The measurements show that the round-trip-time is rather large for a system that is run on a single computer, but one might argue that this could be due to the components being compiled in debug mode. Had more compiler optimizations been turned on, the graph might have ended up looking a little bit differently.
+
+\iffalse
 The conclusion/discussion (choose a heading) is a separate chapter in which the results are analysed and critically assessed. At this point your own conclusions, your subjective view, and explanations of the results are presented.
 
 If this chapter is extensive it can be divided up into more chapters or sub-chapters i.e. one analysis or discussion chapter with explanations of and critical assessment of the results, a concluding chapter where the most important results and well supported conclusions are discussed and to sum it up a chapter with suggestions for further research in the same area. In this chapter it is of vital importance that a connection back to the aim of the survey is made and thus the purpose is pointed out in a summary and analysis of the results. 
@@ -8,11 +12,12 @@ If this chapter is extensive it can be divided up into more chapters or sub-chap
 In this chapter you should also include answers to the following questions: What is the project's news value and its most vital contribution to the research or technology development? Have the project's goals been achieved? Has the task been accomplished? What is the answer to the opening problem formula? Was the result as expected? Are the conclusions general, or do they only apply during certain conditions? Discuss the importance of the choice of method and model for the results. Have new questions arisen due to the result?
 
 The last question invites the possibility to offer proposals to others relevant research, i.e. proposal points for measures and recommendations, points for continued research or development for those wishing to build upon your work. In technical reports on behalf of companies, the recommended solution to a problem is presented at this stage and it is possible to offer a consequence analysis of the solution from both a technical and layman perspective, for example regarding environment, economy and changed work procedures. The chapter then contains recommended measures and proposals for further development or research, and thus to function as a basis for decision-making for the employer or client.
+\fi
 
 \subsection{Ethical and Societal Discussion}
 \label{ch:concl:ethical}
-You will need to include a discussion on ethics, societal impact, and considerations.
+Something to consider with these protocols is that IoT devices will most likely stay active for several years. All of these years of activity could be summed up into a great amount of energy spent, depending on the situation. It could therefore be of interest to vary the protocol(s) used in order to optimize the energy usage of the system, which in turn could make the entire system "greener". This is of course largely situational depending on the project one wishes to solve, but the proof alone that one can weave different protocols together and still end up with a comprehensible system shows that this is something worth to consider when designing an IoT-centered system. 
 
 \subsection{Future Work}
 \label{ch:concl:future-work}
-You should also explain potential future work based on your work.
+A clear prospect of a future work for this project would be to implement true bi-directional communication for WebSockets. As such, the frontend would be able to request the WebSocket server for the current CPU and memory usage stats, thusly being able to measure the round-trip-time without relying on the WebSocket server to do so. A consequence of this is that the ''true'' round trip time would be measured, instead of just measuring the internal round trip time between the CoAP server and the WebSocket server. As the WebSocket protocol has a somewhat involved decoding step for extracting the payload of the message, it could very well be so that this protocol introduces the largest overhead out of the three protocols used within the project.

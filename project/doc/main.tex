@@ -80,12 +80,18 @@
 	keywordstyle=\color{magenta},
 	numberstyle=\color{gray}\ttfamily\footnotesize,
 	backgroundcolor=\color{backcolor},
+	%basicstyle=\ttfamily\scriptsize,
 	basicstyle=\ttfamily\footnotesize,
 	stringstyle=\color{codepurple},
 	numbers=left,
 	tabsize=4
 }
 \lstset{style=mystyle}
+
+\lstdefinelanguage{smalltext}{
+    basicstyle=\scriptsize\ttfamily,
+    numberstyle=\scriptsize,
+}
 
 \newcommand{\paddedtable}[2]{\renewcommand{\arraystretch}{#1}
 \begin{table}[H]\footnotesize\centering #2 \end{table}}
@@ -107,10 +113,10 @@
     \setlength{\headheight}{43pt}
     \pagenumbering{roman}
     
-    \include{00-abstract}
-    \newpage
-    \include{00-acknowledgements}
-    \newpage
+    %\include{00-abstract}
+    %\newpage
+    %\include{00-acknowledgements}
+    %\newpage
     \tableofcontents
     \newpage
     
@@ -151,8 +157,10 @@
     \counterwithin{table}{section}
 
 
+	\iffalse
     \begin{appendices}
       \include{appendices/source-code}
     \end{appendices}
+	\fi
 
 \end{document}
