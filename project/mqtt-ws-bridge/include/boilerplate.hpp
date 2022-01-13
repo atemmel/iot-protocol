@@ -11,6 +11,7 @@ namespace MqttClient {
 
 using Wtf = std::shared_ptr<mqtt::callable_overlay<mqtt::sync_client<mqtt::tcp_endpoint<as::ip::tcp::socket, as::io_context::strand>>>>;
 extern Wtf c;
+extern std::mutex lock;
 
 struct PublishResponse {
 	std::string topic;

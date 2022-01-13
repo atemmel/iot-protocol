@@ -12,6 +12,7 @@ std::string MqttClient::port;
 namespace MqttClient {
 
 Wtf c;
+std::mutex lock;
 
 auto setAddressAndPort(const std::string& address, const std::string& port) -> void {
 	MqttClient::address = address;
@@ -24,6 +25,7 @@ auto serve() -> void {
 	std::uint16_t pid_sub1;
 	std::uint16_t pid_sub2;
 	MQTT_NS::setup_log();
+	lock.lock();
     c = MQTT_NS::make_sync_client(ioc, address, port);
     using packet_id_t = typename std::remove_reference_t<decltype(*c)>::packet_id_t;
     c->set_client_id("coap-mqtt-bridge");
@@ -70,6 +72,7 @@ auto serve() -> void {
 
     // Connect
     c->connect();
+	lock.unlock();
 
     ioc.run();
 	std::cerr << "Bye bye!\n";

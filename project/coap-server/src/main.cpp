@@ -56,6 +56,9 @@ auto refreshCpuUsage() -> void {
 	cpuUsage = 100.0f * (1.0f - idleDelta / totalDelta);
 	cpuUsageMutex.unlock();
 	//unlock
+	
+	previousIdleTime = idle;
+	previousTotalTime = total;
 }
 
 auto readMemUsage(uint64_t& available, uint64_t& total) -> void {

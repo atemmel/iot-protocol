@@ -67,7 +67,11 @@ auto main(int argc, char** argv) -> int {
 			justGotCpu = false;
 			askedForCpu = std::chrono::high_resolution_clock::now();
 			std::cerr << "Sending publish to req/cpu\n";
+			MqttClient::lock.lock();
 			MqttClient::c->publish("req/cpu", " ");
+			MqttClient::lock.unlock();
+			MqttClient::c->publish("req/cpu", " ");
+			std::cerr << "Publish sent!\n";
 			while(!justGotCpu) {
 				std::this_thread::sleep_for(1s);
 			}
