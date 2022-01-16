@@ -404,5 +404,64 @@ auto Coap::encode(const Message& message) -> Bytes {
 	...
 }
 		\end{lstlisting}
+
+		Once that was done, all that's left is to insert all data present in the message, byte by byte.
+
+		\begin{lstlisting}[language=C++]
+	...
+	// Header
+	{
+		auto headerAsBytes = AsBytes(header);
+		bytes.insert(bytes.end(), headerAsBytes.begin(), 
+			headerAsBytes.end());
+	}
+
+	// Tokens
+	bytes.insert(bytes.end(), message.tokens.begin(), 
+			message.tokens.end());
+
+	// Options
+	for(size_t i = 0; i < message.options.size(); i++) {
+		auto option = options[i];
+		auto optionAsBytes = AsBytes(option);
+		bytes.insert(bytes.end(), optionAsBytes.begin(), 
+			optionAsBytes.end());
+
+		if(message.options[i].isUint32()) {
+			auto unsignedAsBytes = AsBytes(message.options[i].uint32);
+			bytes.insert(bytes.end(), unsignedAsBytes.begin(), 
+				unsignedAsBytes.end());
+		} else if(message.options[i].isUint16()) {
+			auto unsignedAsBytes = AsBytes(message.options[i].uint16);
+			bytes.insert(bytes.end(), unsignedAsBytes.begin(), 
+				unsignedAsBytes.end());
+		} else if(message.options[i].isString()) {
+			bytes.insert(bytes.end(), 
+				message.options[i].string.begin(),
+				message.options[i].string.end());
+		}
+	}
+
+
+	// Optional early exit
+	if(message.payload.empty()) {
+		return bytes;
+	}
+
+	// Full byte
+	bytes.insert(bytes.end(), 0xFF);
+
+	// Payload
+	bytes.insert(bytes.end(), message.payload.begin(), 
+		message.payload.end());
+
+	return bytes;
+}
+\end{lstlisting}
+
+\subsection{Decoding}
+		The decoding of the message can then be viewed as an inverse of encoding it. Once again, the abstractions were of good use, but error handling had more of a center stage appearance when implementing this feature, as more things can, in general, go wrong when receiving a message when compared to sending it. As such, length checks were introduce where applicable in order to make sure that the message was coherent.
+
+\newpage
 	\printbibliography
 \end{document}
